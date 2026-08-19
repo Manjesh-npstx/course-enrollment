@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { Course, Student, CreateStudentDto } from '../types';
+import type { Course, Student, CreateStudentDto, UpdateStudentDto } from '../types';
 import { StudentTable } from '../components/Student/StudentTable';
 import { EnrollForm } from '../components/Student/EnrollForm';
+import { EditStudentForm } from '../components/Student/EditStudentForm';
 import { Pagination } from '../components/shared/Pagination';
 import { Modal } from '../components/shared/Modal';
 import { ConfirmDialog } from '../components/shared/ConfirmDialog';
@@ -21,6 +22,7 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [deleteStudent, setDeleteStudent] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -54,10 +56,16 @@ export function CourseDetailPage() {
   }, [fetchCourse, fetchStudents]);
 
   const handleEnroll = async (data: CreateStudentDto) => {
-    await api.enrollStudent(data);
-    setToast({ message: 'Student enrolled successfully', type: 'success' });
-    fetchStudents();
-    fetchCourse();
+    try {
+      await api.enrollStudent(data);
+      setToast({ message: 'Student enrolled successfully', type: 'success' });
+      fetchStudents();
+      fetchCourse();
+    } catch (err: any) {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      setToast({ message: msg || 'Failed to enroll student', type: 'error' });
+      throw err;
+    }
   };
 
   const handleDeleteStudent = async () => {
@@ -73,6 +81,21 @@ export function CourseDetailPage() {
       setToast({ message: 'Failed to remove student', type: 'error' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleEditStudent = async (data: UpdateStudentDto) => {
+    if (!editStudent) return;
+    try {
+      await api.updateStudent(editStudent.id, data);
+      setToast({ message: 'Student updated successfully', type: 'success' });
+      setEditStudent(null);
+      fetchStudents();
+      fetchCourse();
+    } catch (err: any) {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      setToast({ message: msg || 'Failed to update student', type: 'error' });
+      throw err;
     }
   };
 
@@ -144,7 +167,7 @@ export function CourseDetailPage() {
           </div>
         ) : (
           <>
-            <StudentTable students={students} showCourse={false} onDelete={setDeleteStudent} />
+            <StudentTable students={students} showCourse={false} onEdit={setEditStudent} onDelete={setDeleteStudent} />
             <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
           </>
         )}
@@ -154,12 +177,17 @@ export function CourseDetailPage() {
         <EnrollForm courseId={courseId} onSubmit={handleEnroll} onClose={() => setEnrollOpen(false)} />
       </Modal>
 
+      <Modal open={!!editStudent} onClose={() => setEditStudent(null)} title="Edit Student">
+        {editStudent && <EditStudentForm student={editStudent} onSubmit={handleEditStudent} onClose={() => setEditStudent(null)} />}
+      </Modal>
+
       <ConfirmDialog
         open={!!deleteStudent}
         onClose={() => setDeleteStudent(null)}
         onConfirm={handleDeleteStudent}
         title="Remove Student"
         message={`Are you sure you want to remove "${deleteStudent?.name}" from this course?`}
+        confirmLabel="Remove"
         loading={deleting}
       />
 

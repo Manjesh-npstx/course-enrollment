@@ -6,6 +6,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  confirmLabel?: string;
   loading?: boolean;
 }
 
@@ -15,6 +16,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   message,
+  confirmLabel = 'Delete',
   loading,
 }: ConfirmDialogProps) {
   return (
@@ -25,7 +27,7 @@ export function ConfirmDialog({
           Cancel
         </button>
         <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
-          {loading ? 'Deleting...' : 'Delete'}
+          {loading ? 'Processing...' : confirmLabel}
         </button>
       </div>
     </Modal>

@@ -39,22 +39,34 @@ export function CoursesPage() {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
-  };
+  }, []);
 
   const handleCreate = async (data: CreateCourseDto | UpdateCourseDto) => {
-    await api.createCourse(data as CreateCourseDto);
-    setToast({ message: 'Course created successfully', type: 'success' });
-    fetchCourses();
+    try {
+      await api.createCourse(data as CreateCourseDto);
+      setToast({ message: 'Course created successfully', type: 'success' });
+      fetchCourses();
+    } catch (err: any) {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      setToast({ message: msg || 'Failed to create course', type: 'error' });
+      throw err;
+    }
   };
 
   const handleUpdate = async (data: CreateCourseDto | UpdateCourseDto) => {
     if (!editCourse) return;
-    await api.updateCourse(editCourse.id, data as UpdateCourseDto);
-    setToast({ message: 'Course updated successfully', type: 'success' });
-    fetchCourses();
+    try {
+      await api.updateCourse(editCourse.id, data as UpdateCourseDto);
+      setToast({ message: 'Course updated successfully', type: 'success' });
+      fetchCourses();
+    } catch (err: any) {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      setToast({ message: msg || 'Failed to update course', type: 'error' });
+      throw err;
+    }
   };
 
   const handleDelete = async () => {

@@ -10,10 +10,10 @@ function getSeatBadge(course: Course) {
   const enrolled = course.students?.length ?? 0;
   const remaining = course.seatLimit - enrolled;
 
-  if (remaining <= 0) return <span className="badge badge-danger">Full</span>;
-  if (remaining <= course.seatLimit * 0.1) return <span className="badge badge-danger">{remaining}/{course.seatLimit} seats</span>;
-  if (remaining <= course.seatLimit * 0.5) return <span className="badge badge-warning">{remaining}/{course.seatLimit} seats</span>;
-  return <span className="badge badge-success">{remaining}/{course.seatLimit} seats</span>;
+  if (remaining <= 0) return <span className="badge badge-danger">Full ({course.seatLimit}/{course.seatLimit})</span>;
+  if (remaining <= course.seatLimit * 0.1) return <span className="badge badge-danger">{remaining} left ({enrolled}/{course.seatLimit})</span>;
+  if (remaining <= course.seatLimit * 0.5) return <span className="badge badge-warning">{remaining} left ({enrolled}/{course.seatLimit})</span>;
+  return <span className="badge badge-success">{remaining} left ({enrolled}/{course.seatLimit})</span>;
 }
 
 export function CourseTable({ courses, onEdit, onDelete }: CourseTableProps) {
