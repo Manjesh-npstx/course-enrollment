@@ -1,10 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Course } from './course.entity';
 import { Student } from '../students/student.entity';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
+
+/** Paginated response wrapper */
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 @Injectable()
 export class CourseService {
@@ -22,9 +33,45 @@ export class CourseService {
     return this.courseRepo.save(course);
   }
 
-  /** Retrieve all courses with their enrolled students */
-  async findAll(): Promise<Course[]> {
-    return this.courseRepo.find({ relations: { students: true } });
+  /**
+   * Retrieve courses with pagination and optional search.
+   * @param page - Page number (default: 1)
+   * @param limit - Items per page (default: 10, max: 50)
+   * @param search - Optional search term (matches name or instructor, case-insensitive)
+   */
+  async findAll(
+    page = 1,
+    limit = 10,
+    search?: string,
+  ): Promise<PaginatedResult<Course>> {
+    const take = Math.min(limit, 50);
+    const skip = (page - 1) * take;
+
+    // Build where conditions for search
+    const where = search
+      ? [
+          { name: Like(`%${search}%`) },
+          { instructor: Like(`%${search}%`) },
+        ]
+      : undefined;
+
+    const [data, total] = await this.courseRepo.findAndCount({
+      where,
+      relations: { students: true },
+      skip,
+      take,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      },
+    };
   }
 
   /** Retrieve a single course by ID — throws 404 if not found */
@@ -52,12 +99,36 @@ export class CourseService {
     await this.courseRepo.remove(course);
   }
 
-  /** List all students enrolled in a specific course — throws 404 if course not found */
-  async findStudentsByCourseId(courseId: number): Promise<Student[]> {
+  /**
+   * List all students enrolled in a specific course with pagination.
+   * Throws 404 if course not found.
+   */
+  async findStudentsByCourseId(
+    courseId: number,
+    page = 1,
+    limit = 10,
+  ): Promise<PaginatedResult<Student>> {
     await this.findOne(courseId); // Validates course exists
-    return this.studentRepo.find({
+
+    const take = Math.min(limit, 50);
+    const skip = (page - 1) * take;
+
+    const [data, total] = await this.studentRepo.findAndCount({
       where: { courseId },
       relations: { course: true },
+      skip,
+      take,
+      order: { createdAt: 'DESC' },
     });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      },
+    };
   }
 }

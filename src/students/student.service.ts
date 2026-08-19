@@ -4,11 +4,22 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Student } from './student.entity';
 import { Course } from '../courses/course.entity';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
+
+/** Paginated response wrapper */
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 @Injectable()
 export class StudentService {
@@ -53,9 +64,42 @@ export class StudentService {
     return this.studentRepo.save(student);
   }
 
-  /** Retrieve all students with their course information */
-  async findAll(): Promise<Student[]> {
-    return this.studentRepo.find({ relations: { course: true } });
+  /**
+   * Retrieve all students with pagination and optional search.
+   * @param page - Page number (default: 1)
+   * @param limit - Items per page (default: 10, max: 50)
+   * @param search - Optional search term (matches name or email, case-insensitive)
+   */
+  async findAll(
+    page = 1,
+    limit = 10,
+    search?: string,
+  ): Promise<PaginatedResult<Student>> {
+    const take = Math.min(limit, 50);
+    const skip = (page - 1) * take;
+
+    // Build where conditions for search
+    const where = search
+      ? [{ name: Like(`%${search}%`) }, { email: Like(`%${search}%`) }]
+      : undefined;
+
+    const [data, total] = await this.studentRepo.findAndCount({
+      where,
+      relations: { course: true },
+      skip,
+      take,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      },
+    };
   }
 
   /** Retrieve a single student by ID — throws 404 if not found */

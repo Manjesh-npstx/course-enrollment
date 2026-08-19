@@ -6,7 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { StudentService } from './student.service';
 import { CreateStudentDto } from './dto/create-student.dto';
@@ -22,10 +24,17 @@ export class StudentController {
     return this.studentService.create(dto);
   }
 
-  /** GET /students — List all enrolled students */
+  /**
+   * GET /students — List all students
+   * Query params: ?page=1&limit=10&search=john
+   */
   @Get()
-  findAll() {
-    return this.studentService.findAll();
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.studentService.findAll(page, limit, search);
   }
 
   /** GET /students/:id — Get a single student by ID */

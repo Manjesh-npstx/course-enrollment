@@ -6,7 +6,10 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
+  ParseBoolPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -22,10 +25,17 @@ export class CourseController {
     return this.courseService.create(dto);
   }
 
-  /** GET /courses — List all courses */
+  /**
+   * GET /courses — List all courses
+   * Query params: ?page=1&limit=10&search=math
+   */
   @Get()
-  findAll() {
-    return this.courseService.findAll();
+  findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+  ) {
+    return this.courseService.findAll(page, limit, search);
   }
 
   /** GET /courses/:id — Get a single course with enrolled students */
@@ -46,9 +56,16 @@ export class CourseController {
     return this.courseService.remove(id);
   }
 
-  /** GET /courses/:id/students — List all students in a course */
+  /**
+   * GET /courses/:id/students — List all students in a course
+   * Query params: ?page=1&limit=10
+   */
   @Get(':id/students')
-  findStudents(@Param('id', ParseIntPipe) id: number) {
-    return this.courseService.findStudentsByCourseId(id);
+  findStudents(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.courseService.findStudentsByCourseId(id, page, limit);
   }
 }
