@@ -1,6 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export function Layout() {
+  const { user, logout } = useAuth();
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
@@ -31,6 +34,19 @@ export function Layout() {
             <span>Students</span>
           </NavLink>
         </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <span className="sidebar-user-name">{user?.name}</span>
+            <button className="btn btn-ghost btn-sm" onClick={logout}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
       </aside>
       <main className="main-content">
         <Outlet />

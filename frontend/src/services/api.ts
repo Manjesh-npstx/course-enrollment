@@ -10,13 +10,34 @@ import type {
 
 const BASE = 'http://localhost:3000';
 
+let authToken: string | null = localStorage.getItem('auth_token');
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
+}
+
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers as Record<string, string>,
+  };
+
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
   const res = await fetch(`${BASE}${url}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -33,6 +54,19 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // Auth
+  login: (email: string, password: string) =>
+    request<{ user: { id: number; name: string; email: string }; token: string }>(
+      '/auth/login',
+      { method: 'POST', body: JSON.stringify({ email, password }) },
+    ),
+
+  register: (name: string, email: string, password: string) =>
+    request<{ user: { id: number; name: string; email: string }; token: string }>(
+      '/auth/register',
+      { method: 'POST', body: JSON.stringify({ name, email, password }) },
+    ),
+
   // Courses
   getCourses: (page = 1, limit = 10, search = '') =>
     request<PaginatedResponse<Course>>(
