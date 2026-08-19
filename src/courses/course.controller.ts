@@ -40,4 +40,9 @@ export class CourseController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.courseService.remove(id);
   }
+
+  @Get(':id/students')
+  findStudents(@Param('id', ParseIntPipe) id: number) {
+    return this.courseService.findStudentsByCourseId(id);
+  }
 }

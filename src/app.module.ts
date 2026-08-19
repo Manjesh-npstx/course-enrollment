@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CourseModule } from './courses/course.module';
-import { Course } from './courses/course.entity';
-import { Student } from './students/student.entity';
+import { StudentModule } from './students/student.module';
 
 @Module({
   imports: [
@@ -12,8 +11,8 @@ import { Student } from './students/student.entity';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    TypeOrmModule.forFeature([Student]),
     CourseModule,
+    StudentModule,
   ],
 })
 export class AppModule {}
