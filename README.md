@@ -1,98 +1,204 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Course Enrollment API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**, and **SQLite**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- Full CRUD operations for Courses and Students
+- **Seat limit enforcement** — rejects enrollment when a course is full
+- Request validation on all endpoints
+- Pagination and search filtering
+- Structured error responses (400, 404, 409)
+- One-to-many relationship between Courses and Students
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech Stack
 
-## Project setup
+| Technology | Purpose |
+|------------|---------|
+| NestJS | Backend framework |
+| TypeORM | ORM for database operations |
+| SQLite | File-based database |
+| class-validator | Request validation |
+| TypeScript | Language |
+
+## Project Setup
 
 ```bash
-$ npm install
+# Install dependencies
+npm install
+
+# Start development server
+npm run start:dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start:prod
 ```
 
-## Compile and run the project
+Server runs on `http://localhost:3000` by default. Set `PORT` env variable to change.
+
+## API Endpoints
+
+### Courses
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/courses` | Create a course |
+| `GET` | `/courses` | List courses (paginated) |
+| `GET` | `/courses/:id` | Get a course |
+| `PATCH` | `/courses/:id` | Update a course |
+| `DELETE` | `/courses/:id` | Delete a course |
+| `GET` | `/courses/:id/students` | List students in a course |
+
+### Students
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/students` | Enroll a student |
+| `GET` | `/students` | List students (paginated) |
+| `GET` | `/students/:id` | Get a student |
+| `PATCH` | `/students/:id` | Update a student |
+| `DELETE` | `/students/:id` | Unenroll a student |
+
+## Query Parameters
+
+All `GET` list endpoints support:
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `page` | `1` | Page number |
+| `limit` | `10` | Items per page (max: 50) |
+| `search` | — | Filter by name/instructor/email |
+
+**Example:** `GET /courses?search=math&page=1&limit=5`
+
+### Response Format
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "total": 25,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 3
+  }
+}
+```
+
+## Examples (curl)
+
+### Create a course
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+curl -X POST http://localhost:3000/courses \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Math 101","instructor":"Dr. Smith","seatLimit":30}'
 ```
 
-## Run tests
+### Enroll a student
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","email":"john@example.com","courseId":1}'
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Test seat limit (set seatLimit to 2, enroll 3 students)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Create course with 2 seats
+curl -X POST http://localhost:3000/courses \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Physics","instructor":"Dr. Jones","seatLimit":2}'
+
+# Enroll 2 students (both succeed)
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alice","email":"alice@test.com","courseId":1}'
+
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bob","email":"bob@test.com","courseId":1}'
+
+# Third enrollment FAILS with 409 Conflict
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Charlie","email":"charlie@test.com","courseId":1}'
+# Response: {"message":"Course is full. Cannot enroll more students.","error":"Conflict","statusCode":409}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Pagination
 
-## Resources
+```bash
+# Get page 2 with 5 items per page
+curl "http://localhost:3000/courses?page=2&limit=5"
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+### Search
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Search courses by name or instructor
+curl "http://localhost:3000/courses?search=Smith"
 
-## Support
+# Search students by name or email
+curl "http://localhost:3000/students?search=alice"
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Error Responses
 
-## Stay in touch
+| Status | Meaning | Example |
+|--------|---------|---------|
+| `400` | Validation failure | Missing required field, invalid email |
+| `404` | Entity not found | Course/Student ID doesn't exist |
+| `409` | Business rule violation | Course is full |
+| `500` | Server error | Unexpected failure |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Validation Rules
+
+### Course
+
+| Field | Rules |
+|-------|-------|
+| `name` | Required, string, max 255 chars |
+| `instructor` | Required, string, max 255 chars |
+| `seatLimit` | Required, integer, minimum 1 |
+
+### Student
+
+| Field | Rules |
+|-------|-------|
+| `name` | Required, string, max 255 chars |
+| `email` | Required, valid email format |
+| `enrollDate` | Optional, ISO date (defaults to today) |
+| `courseId` | Required, must reference existing course |
+
+## Project Structure
+
+```
+src/
+├── courses/
+│   ├── dto/
+│   │   ├── create-course.dto.ts
+│   │   └── update-course.dto.ts
+│   ├── course.entity.ts
+│   ├── course.controller.ts
+│   ├── course.service.ts
+│   └── course.module.ts
+├── students/
+│   ├── dto/
+│   │   ├── create-student.dto.ts
+│   │   └── update-student.dto.ts
+│   ├── student.entity.ts
+│   ├── student.controller.ts
+│   ├── student.service.ts
+│   └── student.module.ts
+├── app.module.ts
+└── main.ts
+```
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT
