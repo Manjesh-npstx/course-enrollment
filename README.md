@@ -1,15 +1,17 @@
 # Course Enrollment API
 
-A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**, and **SQLite**.
+A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**, and **SQLite**. Includes a **React** frontend with professional UI, JWT authentication, and full CRUD operations.
 
 ## Features
 
 - Full CRUD operations for Courses and Students
+- **JWT authentication** — register/login, token-based route protection
 - **Seat limit enforcement** — rejects enrollment when a course is full
 - Request validation on all endpoints
 - Pagination and search filtering
-- Structured error responses (400, 404, 409)
+- Structured error responses (400, 401, 404, 409)
 - One-to-many relationship between Courses and Students
+- React frontend with auth, course management, student management
 
 ## Tech Stack
 
@@ -19,6 +21,11 @@ A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**
 | TypeORM | ORM for database operations |
 | SQLite | File-based database |
 | class-validator | Request validation |
+| Passport + JWT | Authentication |
+| bcryptjs | Password hashing |
+| React 19 | Frontend |
+| Vite | Frontend bundler |
+| React Router | Client-side routing |
 | TypeScript | Language |
 
 ## Project Setup
@@ -27,7 +34,7 @@ A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (backend)
 npm run start:dev
 
 # Build for production
@@ -35,32 +42,46 @@ npm run build
 
 # Start production server
 npm run start:prod
+
+# Frontend
+cd frontend
+npm install
+npm run dev    # http://localhost:5173
 ```
 
 Server runs on `http://localhost:3000` by default. Set `PORT` env variable to change.
 
 ## API Endpoints
 
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/auth/register` | No | Register a new user |
+| `POST` | `/auth/login` | No | Login and receive JWT token |
+
 ### Courses
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/courses` | Create a course |
-| `GET` | `/courses` | List courses (paginated) |
-| `GET` | `/courses/:id` | Get a course |
-| `PATCH` | `/courses/:id` | Update a course |
-| `DELETE` | `/courses/:id` | Delete a course |
-| `GET` | `/courses/:id/students` | List students in a course |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/courses` | Yes | Create a course |
+| `GET` | `/courses` | No | List courses (paginated) |
+| `GET` | `/courses/:id` | No | Get a course |
+| `PATCH` | `/courses/:id` | Yes | Update a course |
+| `DELETE` | `/courses/:id` | Yes | Delete a course |
+| `GET` | `/courses/:id/students` | No | List students in a course |
 
 ### Students
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/students` | Enroll a student |
-| `GET` | `/students` | List students (paginated) |
-| `GET` | `/students/:id` | Get a student |
-| `PATCH` | `/students/:id` | Update a student |
-| `DELETE` | `/students/:id` | Unenroll a student |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/students` | Yes | Enroll a student |
+| `GET` | `/students` | No | List students (paginated) |
+| `GET` | `/students/:id` | No | Get a student |
+| `PATCH` | `/students/:id` | Yes | Update a student |
+| `DELETE` | `/students/:id` | Yes | Unenroll a student |
+
+**Auth:** Send `Authorization: Bearer <token>` header for protected endpoints.
 
 ## Query Parameters
 
@@ -179,6 +200,16 @@ curl "http://localhost:3000/students?search=alice"
 
 ```
 src/
+├── auth/
+│   ├── dto/
+│   │   └── auth.dto.ts
+│   ├── strategies/
+│   │   └── jwt.strategy.ts
+│   ├── user.entity.ts
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   ├── auth.module.ts
+│   └── jwt-auth.guard.ts
 ├── courses/
 │   ├── dto/
 │   │   ├── create-course.dto.ts
@@ -197,6 +228,26 @@ src/
 │   └── student.module.ts
 ├── app.module.ts
 └── main.ts
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── Layout/
+│   │   ├── Course/
+│   │   └── Student/
+│   ├── context/
+│   │   └── AuthContext.tsx
+│   ├── pages/
+│   │   ├── LoginPage.tsx
+│   │   ├── RegisterPage.tsx
+│   │   ├── CoursesPage.tsx
+│   │   ├── CourseDetailPage.tsx
+│   │   └── StudentsPage.tsx
+│   ├── services/
+│   │   └── api.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── App.tsx
+│   └── App.css
 ```
 
 ## License
