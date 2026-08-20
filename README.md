@@ -52,6 +52,16 @@ npm run dev    # http://localhost:5173
 
 Server runs on `http://localhost:3000` by default. Set `PORT` env variable to change.
 
+### Docker
+
+```bash
+# Build image
+docker build -t course-enrollment .
+
+# Run container
+docker run -p 3000:3000 course-enrollment
+```
+
 ## API Endpoints
 
 ### Authentication

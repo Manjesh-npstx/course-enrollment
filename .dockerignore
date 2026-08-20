@@ -1,0 +1,7 @@
+node_modules
+dist
+database.sqlite
+frontend
+.git
+*.md
+*.sh
