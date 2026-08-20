@@ -78,9 +78,12 @@ export class StudentService {
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
-    // Build where conditions for search
+    // Build where conditions for search (escape LIKE wildcards)
     const where = search
-      ? [{ name: Like(`%${search}%`) }, { email: Like(`%${search}%`) }]
+      ? (() => {
+          const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+          return [{ name: Like(`%${escaped}%`) }, { email: Like(`%${escaped}%`) }];
+        })()
       : undefined;
 
     const [data, total] = await this.studentRepo.findAndCount({

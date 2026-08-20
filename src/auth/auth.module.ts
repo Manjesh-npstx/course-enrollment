@@ -6,13 +6,14 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { User } from './user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { JWT_SECRET } from './auth.constants';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'course-enrollment-secret-key',
+      secret: JWT_SECRET,
       signOptions: { expiresIn: '24h' },
     }),
   ],

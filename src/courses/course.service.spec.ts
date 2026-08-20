@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { Course } from './course.entity';
 import { Student } from '../students/student.entity';
@@ -11,6 +11,16 @@ const mockCourse = {
   instructor: 'Jane Smith',
   seatLimit: 5,
   students: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const mockStudent = {
+  id: 1,
+  name: 'John Doe',
+  email: 'john@example.com',
+  courseId: 1,
+  enrollDate: '2026-01-01',
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -40,7 +50,9 @@ describe('CourseService', () => {
 
   beforeEach(async () => {
     courseRepo = createMockRepo();
-    studentRepo = createMockRepo();
+    studentRepo = createMockRepo({
+      findAndCount: jest.fn().mockResolvedValue([[mockStudent], 1]),
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -105,6 +117,11 @@ describe('CourseService', () => {
       courseRepo.findOne.mockResolvedValue(null);
       await expect(service.update(999, { name: 'X' })).rejects.toThrow(NotFoundException);
     });
+
+    it('should throw ConflictException if seat limit reduced below enrollment', async () => {
+      studentRepo.count.mockResolvedValue(10);
+      await expect(service.update(1, { seatLimit: 5 })).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('remove', () => {
@@ -122,8 +139,9 @@ describe('CourseService', () => {
   describe('findStudentsByCourseId', () => {
     it('should return students for a course', async () => {
       const result = await service.findStudentsByCourseId(1);
-      expect(result.data).toBeDefined();
-      expect(result.meta).toBeDefined();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].name).toBe('John Doe');
+      expect(result.meta.total).toBe(1);
     });
 
     it('should throw NotFoundException if course not found', async () => {

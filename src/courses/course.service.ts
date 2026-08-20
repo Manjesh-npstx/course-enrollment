@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Course } from './course.entity';
@@ -47,12 +47,15 @@ export class CourseService {
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
-    // Build where conditions for search
+    // Build where conditions for search (escape LIKE wildcards)
     const where = search
-      ? [
-          { name: Like(`%${search}%`) },
-          { instructor: Like(`%${search}%`) },
-        ]
+      ? (() => {
+          const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+          return [
+            { name: Like(`%${escaped}%`) },
+            { instructor: Like(`%${escaped}%`) },
+          ];
+        })()
       : undefined;
 
     const [data, total] = await this.courseRepo.findAndCount({
@@ -89,6 +92,18 @@ export class CourseService {
   /** Update course details — only provided fields are changed */
   async update(id: number, dto: UpdateCourseDto): Promise<Course> {
     const course = await this.findOne(id);
+
+    if (dto.seatLimit !== undefined) {
+      const currentEnrollment = await this.studentRepo.count({
+        where: { courseId: id },
+      });
+      if (dto.seatLimit < currentEnrollment) {
+        throw new ConflictException(
+          `Cannot reduce seat limit to ${dto.seatLimit}. ${currentEnrollment} student(s) currently enrolled.`,
+        );
+      }
+    }
+
     Object.assign(course, dto);
     return this.courseRepo.save(course);
   }
