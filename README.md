@@ -122,42 +122,62 @@ All `GET` list endpoints support:
 
 ## Examples (curl)
 
-### Create a course
+All write endpoints require a JWT token. Login first to get one:
+
+```bash
+# Login as admin
+TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@campus.com","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+# Or register a new student account
+TOKEN=$(curl -s -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","email":"john@example.com","password":"pass123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+```
+
+### Create a course (admin only)
 
 ```bash
 curl -X POST http://localhost:3000/courses \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Math 101","instructor":"Dr. Smith","seatLimit":30}'
 ```
 
-### Enroll a student
+### Enroll a student (admin only)
 
 ```bash
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"John Doe","email":"john@example.com","courseId":1}'
 ```
 
 ### Test seat limit (set seatLimit to 2, enroll 3 students)
 
 ```bash
-# Create course with 2 seats
+# Create course with 2 seats (admin only)
 curl -X POST http://localhost:3000/courses \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Physics","instructor":"Dr. Jones","seatLimit":2}'
 
-# Enroll 2 students (both succeed)
+# Enroll 2 students (both succeed, admin only)
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Alice","email":"alice@test.com","courseId":1}'
 
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Bob","email":"bob@test.com","courseId":1}'
 
 # Third enrollment FAILS with 409 Conflict
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Charlie","email":"charlie@test.com","courseId":1}'
 # Response: {"message":"Course is full. Cannot enroll more students.","error":"Conflict","statusCode":409}
 ```
