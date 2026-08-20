@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Course } from '../../types';
 
 interface CourseTableProps {
@@ -31,7 +32,7 @@ export function CourseTable({ courses, onEdit, onDelete }: CourseTableProps) {
         {courses.map((course) => (
           <tr key={course.id}>
             <td className="td-bold">
-              <a href={`/courses/${course.id}`} className="table-link">{course.name}</a>
+              <Link to={`/courses/${course.id}`} className="table-link">{course.name}</Link>
             </td>
             <td>{course.instructor}</td>
             <td>{getSeatBadge(course)}</td>

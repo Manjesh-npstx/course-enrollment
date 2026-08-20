@@ -15,6 +15,7 @@ export function CourseDetailPage() {
   const courseId = Number(id);
 
   const [course, setCourse] = useState<Course | null>(null);
+  const [courseLoading, setCourseLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -28,11 +29,14 @@ export function CourseDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const fetchCourse = useCallback(async () => {
+    setCourseLoading(true);
     try {
       const data = await api.getCourse(courseId);
       setCourse(data);
     } catch {
       setToast({ message: 'Failed to load course', type: 'error' });
+    } finally {
+      setCourseLoading(false);
     }
   }, [courseId]);
 
@@ -100,7 +104,20 @@ export function CourseDetailPage() {
   };
 
   const enrolled = course?.students?.length ?? 0;
-  const isFull = enrolled >= (course?.seatLimit ?? 0);
+  const available = (course?.seatLimit ?? 0) - enrolled;
+  const isFull = available <= 0;
+
+  if (courseLoading) {
+    return (
+      <div className="page">
+        <div className="table-skeleton">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton-row" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!course) {
     return (
@@ -129,7 +146,7 @@ export function CourseDetailPage() {
           {isFull ? (
             <span className="badge badge-danger">Full — {enrolled}/{course.seatLimit} seats</span>
           ) : (
-            <span className="badge badge-success">{enrolled}/{course.seatLimit} seats available</span>
+            <span className="badge badge-success">{available} seats available ({enrolled}/{course.seatLimit})</span>
           )}
         </div>
       </div>

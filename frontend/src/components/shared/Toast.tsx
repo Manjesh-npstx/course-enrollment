@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ToastProps {
   message: string;
@@ -7,10 +7,13 @@ interface ToastProps {
 }
 
 export function Toast({ message, type, onClose }: ToastProps) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    const timer = setTimeout(() => onCloseRef.current(), 3000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
 
   return (
     <div className={`toast toast-${type}`}>

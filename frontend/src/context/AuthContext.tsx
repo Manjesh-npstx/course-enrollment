@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { api, setAuthToken, getAuthToken } from '../services/api';
+import { api, setAuthToken, getAuthToken, setOnAuthError } from '../services/api';
 
 interface AuthUser {
   id: number;
@@ -34,6 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    setOnAuthError(() => {
+      localStorage.removeItem('auth_user');
+      setUser(null);
+    });
+    return () => setOnAuthError(null);
   }, []);
 
   const login = async (email: string, password: string) => {

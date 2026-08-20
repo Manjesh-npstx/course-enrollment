@@ -25,6 +25,12 @@ export function getAuthToken(): string | null {
   return authToken;
 }
 
+let onAuthError: (() => void) | null = null;
+
+export function setOnAuthError(callback: (() => void) | null) {
+  onAuthError = callback;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,6 +47,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401 && onAuthError) {
+      setAuthToken(null);
+      onAuthError();
+    }
     const error = await res.json().catch(() => ({
       statusCode: res.status,
       message: res.statusText,
@@ -50,7 +60,9 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const text = await res.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text);
 }
 
 export const api = {

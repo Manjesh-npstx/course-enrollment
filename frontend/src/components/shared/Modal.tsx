@@ -18,6 +18,13 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     return () => document.removeEventListener('keydown', handleEsc);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [open]);
+
   if (!open) return null;
 
   return (
