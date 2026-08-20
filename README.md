@@ -12,6 +12,7 @@ A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**
 - Structured error responses (400, 401, 404, 409)
 - One-to-many relationship between Courses and Students
 - React frontend with auth, course management, student management
+- **Swagger API docs** at `/docs`
 
 ## Tech Stack
 
@@ -173,6 +174,7 @@ curl "http://localhost:3000/students?search=alice"
 | Status | Meaning | Example |
 |--------|---------|---------|
 | `400` | Validation failure | Missing required field, invalid email |
+| `401` | Unauthorized | Missing or invalid JWT token |
 | `404` | Entity not found | Course/Student ID doesn't exist |
 | `409` | Business rule violation | Course is full |
 | `500` | Server error | Unexpected failure |
@@ -209,6 +211,7 @@ src/
 │   ├── auth.controller.ts
 │   ├── auth.service.ts
 │   ├── auth.module.ts
+│   ├── auth.constants.ts
 │   └── jwt-auth.guard.ts
 ├── courses/
 │   ├── dto/
