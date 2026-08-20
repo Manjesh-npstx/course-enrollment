@@ -9,8 +9,10 @@ import { Pagination } from '../components/shared/Pagination';
 import { Modal } from '../components/shared/Modal';
 import { ConfirmDialog } from '../components/shared/ConfirmDialog';
 import { Toast } from '../components/shared/Toast';
+import { useAuth } from '../context/AuthContext';
 
 export function StudentsPage() {
+  const { isAdmin } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -104,13 +106,15 @@ export function StudentsPage() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Students</h1>
-        <button className="btn btn-primary" onClick={() => { setSelectedCourseId(null); setEnrollOpen(true); }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Enroll Student
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => { setSelectedCourseId(null); setEnrollOpen(true); }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Enroll Student
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -134,7 +138,7 @@ export function StudentsPage() {
           </div>
         ) : (
           <>
-            <StudentTable students={students} showCourse={true} onEdit={setEditStudent} onDelete={setDeleteStudent} />
+            <StudentTable students={students} showCourse={true} onEdit={isAdmin ? setEditStudent : undefined} onDelete={isAdmin ? setDeleteStudent : undefined} />
             <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
           </>
         )}

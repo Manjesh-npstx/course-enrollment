@@ -8,8 +8,10 @@ import { Pagination } from '../components/shared/Pagination';
 import { Modal } from '../components/shared/Modal';
 import { ConfirmDialog } from '../components/shared/ConfirmDialog';
 import { Toast } from '../components/shared/Toast';
+import { useAuth } from '../context/AuthContext';
 
 export function CoursesPage() {
+  const { isAdmin } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -88,13 +90,15 @@ export function CoursesPage() {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Courses</h1>
-        <button className="btn btn-primary" onClick={() => { setEditCourse(null); setFormOpen(true); }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          New Course
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => { setEditCourse(null); setFormOpen(true); }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Course
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -113,9 +117,11 @@ export function CoursesPage() {
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
             </svg>
             <p>No courses found</p>
-            <button className="btn btn-primary" onClick={() => { setEditCourse(null); setFormOpen(true); }}>
-              Create your first course
-            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => { setEditCourse(null); setFormOpen(true); }}>
+                Create your first course
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -123,6 +129,7 @@ export function CoursesPage() {
               courses={courses}
               onEdit={(c) => { setEditCourse(c); setFormOpen(true); }}
               onDelete={setDeleteCourse}
+              isAdmin={isAdmin}
             />
             <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
           </>

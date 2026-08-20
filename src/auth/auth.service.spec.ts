@@ -10,6 +10,7 @@ const mockUser = {
   name: 'Admin',
   email: 'admin@test.com',
   password: '$2a$10$hashedpassword',
+  role: 'admin',
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -64,6 +65,7 @@ describe('AuthService', () => {
         password: 'pass123',
       });
       expect(result.user.name).toBe('Admin');
+      expect(result.user.role).toBe('student');
       expect(result.token).toBe('mock-jwt-token');
       expect(userRepo.save).toHaveBeenCalled();
     });
@@ -84,6 +86,7 @@ describe('AuthService', () => {
         password: 'pass123',
       });
       expect(result.user.email).toBe('admin@test.com');
+      expect(result.user.role).toBe('admin');
       expect(result.token).toBe('mock-jwt-token');
     });
 

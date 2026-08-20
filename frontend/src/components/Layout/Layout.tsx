@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
   return (
     <div className="app-layout">
@@ -37,6 +37,9 @@ export function Layout() {
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <span className="sidebar-user-name">{user?.name}</span>
+            <span className={`badge ${isAdmin ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', marginLeft: '6px' }}>
+              {isAdmin ? 'Admin' : 'Student'}
+            </span>
             <button className="btn btn-ghost btn-sm" onClick={logout}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

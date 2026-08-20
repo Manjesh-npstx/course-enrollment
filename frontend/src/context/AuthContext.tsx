@@ -5,11 +5,13 @@ interface AuthUser {
   id: number;
   name: string;
   email: string;
+  role: 'admin' | 'student';
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -27,7 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem('auth_user');
       if (stored) {
         try {
-          setUser(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          setUser({ ...parsed, role: parsed.role as AuthUser['role'] });
         } catch {
           setAuthToken(null);
         }
@@ -47,15 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.login(email, password);
     setAuthToken(res.token);
-    localStorage.setItem('auth_user', JSON.stringify(res.user));
-    setUser(res.user);
+    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const register = async (name: string, email: string, password: string) => {
     const res = await api.register(name, email, password);
     setAuthToken(res.token);
-    localStorage.setItem('auth_user', JSON.stringify(res.user));
-    setUser(res.user);
+    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const logout = () => {
@@ -64,8 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const isAdmin = user?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

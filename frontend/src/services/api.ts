@@ -68,13 +68,13 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Auth
   login: (email: string, password: string) =>
-    request<{ user: { id: number; name: string; email: string }; token: string }>(
+    request<{ user: { id: number; name: string; email: string; role: string }; token: string }>(
       '/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
 
   register: (name: string, email: string, password: string) =>
-    request<{ user: { id: number; name: string; email: string }; token: string }>(
+    request<{ user: { id: number; name: string; email: string; role: string }; token: string }>(
       '/auth/register',
       { method: 'POST', body: JSON.stringify({ name, email, password }) },
     ),

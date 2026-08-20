@@ -9,10 +9,12 @@ import { Pagination } from '../components/shared/Pagination';
 import { Modal } from '../components/shared/Modal';
 import { ConfirmDialog } from '../components/shared/ConfirmDialog';
 import { Toast } from '../components/shared/Toast';
+import { useAuth } from '../context/AuthContext';
 
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const courseId = Number(id);
+  const { isAdmin } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [courseLoading, setCourseLoading] = useState(true);
@@ -153,13 +155,15 @@ export function CourseDetailPage() {
 
       <div className="page-header">
         <h2 className="section-title">Enrolled Students</h2>
-        <button className="btn btn-primary" onClick={() => setEnrollOpen(true)} disabled={isFull}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          {isFull ? 'Course Full' : 'Enroll Student'}
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setEnrollOpen(true)} disabled={isFull}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            {isFull ? 'Course Full' : 'Enroll Student'}
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -178,13 +182,15 @@ export function CourseDetailPage() {
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             <p>No students enrolled yet</p>
-            <button className="btn btn-primary" onClick={() => setEnrollOpen(true)} disabled={isFull}>
-              Enroll first student
-            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => setEnrollOpen(true)} disabled={isFull}>
+                Enroll first student
+              </button>
+            )}
           </div>
         ) : (
           <>
-            <StudentTable students={students} showCourse={false} onEdit={setEditStudent} onDelete={setDeleteStudent} />
+            <StudentTable students={students} showCourse={false} onEdit={isAdmin ? setEditStudent : undefined} onDelete={isAdmin ? setDeleteStudent : undefined} />
             <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
           </>
         )}
