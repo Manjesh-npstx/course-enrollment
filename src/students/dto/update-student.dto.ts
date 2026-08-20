@@ -1,25 +1,25 @@
 import { IsString, IsNotEmpty, IsInt, IsEmail, IsOptional, IsDateString, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * DTO for updating an existing student.
- * All fields are optional — only provided fields will be updated.
- * Used by PATCH /students/:id endpoint.
- */
 export class UpdateStudentDto {
+  @ApiPropertyOptional({ example: 'Alice Updated' })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   name?: string;
 
+  @ApiPropertyOptional({ example: 'alice-new@example.com' })
   @IsOptional()
   @IsEmail()
   email?: string;
 
+  @ApiPropertyOptional({ example: '2026-02-01' })
   @IsOptional()
   @IsDateString()
   enrollDate?: string;
 
+  @ApiPropertyOptional({ example: 2 })
   @IsOptional()
   @IsInt()
   courseId?: number;

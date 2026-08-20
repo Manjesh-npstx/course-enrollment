@@ -1,23 +1,22 @@
 import { IsString, IsNotEmpty, IsInt, Min, MaxLength, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * DTO for updating an existing course.
- * All fields are optional — only provided fields will be updated.
- * Used by PATCH /courses/:id endpoint.
- */
 export class UpdateCourseDto {
+  @ApiPropertyOptional({ example: 'React Fundamentals' })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   name?: string;
 
+  @ApiPropertyOptional({ example: 'Jane Smith' })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   instructor?: string;
 
+  @ApiPropertyOptional({ example: 40, minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
