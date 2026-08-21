@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { StudentService } from './student.service';
 import { Student } from './student.entity';
 import { Course } from '../courses/course.entity';
@@ -14,10 +15,38 @@ function createMockRepo(overrides: Record<string, any> = {}) {
     findOne: jest.fn().mockResolvedValue(mockStudent),
     findAndCount: jest.fn().mockResolvedValue([[mockStudent], 1]),
     count: jest.fn().mockResolvedValue(0),
-    create: jest.fn().mockImplementation((dto) => ({ id: 1, ...dto, course: mockCourse })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    create: jest.fn().mockImplementation((...args) => {
+      const dto = args.length === 2 ? args[1] : args[0];
+      return { id: 1, ...dto, course: mockCourse };
+    }),
+    save: jest.fn().mockImplementation((...args) => {
+      const entity = args.length === 2 ? args[1] : args[0];
+      return Promise.resolve(entity);
+    }),
     remove: jest.fn().mockResolvedValue(undefined),
     ...overrides,
+  };
+}
+
+function createMockDataSource(studentRepo: ReturnType<typeof createMockRepo>, courseRepo: ReturnType<typeof createMockRepo>) {
+  const mockManager = {
+    findOne: jest.fn()
+      .mockImplementation((target) => {
+        if (target.name === 'Student') return studentRepo.findOne();
+        return courseRepo.findOne();
+      }),
+    count: jest.fn()
+      .mockImplementation((target) => {
+        if (target.name === 'Student') return studentRepo.count();
+        return courseRepo.count();
+      }),
+    create: studentRepo.create,
+    save: studentRepo.save,
+  };
+
+  return {
+    transaction: jest.fn().mockImplementation(async (cb) => cb(mockManager)),
+    manager: mockManager,
   };
 }
 
@@ -25,16 +54,19 @@ describe('StudentService', () => {
   let service: StudentService;
   let studentRepo: ReturnType<typeof createMockRepo>;
   let courseRepo: ReturnType<typeof createMockRepo>;
+  let dataSource: ReturnType<typeof createMockDataSource>;
 
   beforeEach(async () => {
     studentRepo = createMockRepo();
     courseRepo = createMockRepo({ findOne: jest.fn().mockResolvedValue(mockCourse) });
+    dataSource = createMockDataSource(studentRepo, courseRepo);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StudentService,
         { provide: getRepositoryToken(Student), useValue: studentRepo },
         { provide: getRepositoryToken(Course), useValue: courseRepo },
+        { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
 

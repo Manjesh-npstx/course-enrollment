@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, DataSource } from 'typeorm';
 import { Course } from './course.entity';
 import { Student } from '../students/student.entity';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -25,6 +25,8 @@ export class CourseService {
 
     @InjectRepository(Student)
     private readonly studentRepo: Repository<Student>,
+
+    private readonly dataSource: DataSource,
   ) {}
 
   /** Create a new course */
@@ -89,23 +91,36 @@ export class CourseService {
     return course;
   }
 
-  /** Update course details — only provided fields are changed */
+  /**
+   * Update course details — only provided fields are changed.
+   * If reducing seat limit, uses a serialized transaction to prevent a race
+   * where concurrent enrollments could push the course over the new limit
+   * between the count check and the seat limit update.
+   */
   async update(id: number, dto: UpdateCourseDto): Promise<Course> {
-    const course = await this.findOne(id);
-
-    if (dto.seatLimit !== undefined) {
-      const currentEnrollment = await this.studentRepo.count({
-        where: { courseId: id },
+    return this.dataSource.transaction(async (manager) => {
+      const course = await manager.findOne(Course, {
+        where: { id },
+        relations: { students: true },
       });
-      if (dto.seatLimit < currentEnrollment) {
-        throw new ConflictException(
-          `Cannot reduce seat limit to ${dto.seatLimit}. ${currentEnrollment} student(s) currently enrolled.`,
-        );
+      if (!course) {
+        throw new NotFoundException(`Course with ID ${id} not found`);
       }
-    }
 
-    Object.assign(course, dto);
-    return this.courseRepo.save(course);
+      if (dto.seatLimit !== undefined) {
+        const currentEnrollment = await manager.count(Student, {
+          where: { courseId: id },
+        });
+        if (dto.seatLimit < currentEnrollment) {
+          throw new ConflictException(
+            `Cannot reduce seat limit to ${dto.seatLimit}. ${currentEnrollment} student(s) currently enrolled.`,
+          );
+        }
+      }
+
+      Object.assign(course, dto);
+      return manager.save(Course, course);
+    });
   }
 
   /** Delete a course and all its enrolled students (cascade) */
