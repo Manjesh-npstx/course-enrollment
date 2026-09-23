@@ -68,6 +68,29 @@ export function LoginPage({ onToggle }: LoginPageProps) {
           <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary auth-btn"
+            style={{ marginTop: '10px' }}
+            disabled={loading}
+            onClick={async () => {
+              setEmail('admin@campus.com');
+              setPassword('admin123');
+              setError('');
+              setLoading(true);
+              try {
+                await login('admin@campus.com', 'admin123');
+              } catch (err: any) {
+                const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+                setError(msg || 'Admin login failed');
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            ⚡ Quick Sign In as Admin
+          </button>
         </form>
 
         <p className="auth-toggle">

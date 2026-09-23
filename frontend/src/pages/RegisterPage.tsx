@@ -10,6 +10,7 @@ export function RegisterPage({ onToggle }: RegisterPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'student'>('admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,7 @@ export function RegisterPage({ onToggle }: RegisterPageProps) {
     setError('');
     setLoading(true);
     try {
-      await register(name, email, password);
+      await register(name, email, password, role);
     } catch (err: any) {
       const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
       setError(msg || 'Registration failed');
@@ -77,6 +78,18 @@ export function RegisterPage({ onToggle }: RegisterPageProps) {
               minLength={6}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label>Account Role</label>
+            <select
+              className="input"
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'admin' | 'student')}
+            >
+              <option value="admin">Admin (Full Access — Create/Edit/Delete Courses & Students)</option>
+              <option value="student">Student (Read-Only access)</option>
+            </select>
           </div>
 
           <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>

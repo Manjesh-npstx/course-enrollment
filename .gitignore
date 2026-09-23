@@ -1,9 +1,13 @@
+target/
 node_modules/
 dist/
 build/
 .env
 *.sqlite
 .DS_Store
+.idea/
+*.iml
+backend-nestjs/
 Manjesh.pdf
 inst.md
 plan.md

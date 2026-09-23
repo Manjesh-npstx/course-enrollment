@@ -172,7 +172,7 @@ export function StudentsPage() {
       </Modal>
 
       <Modal open={!!editStudent} onClose={() => setEditStudent(null)} title="Edit Student">
-        {editStudent && <EditStudentForm student={editStudent} onSubmit={handleEditStudent} onClose={() => setEditStudent(null)} />}
+        {editStudent && <EditStudentForm student={editStudent} courses={courses} isAdmin={isAdmin} onSubmit={handleEditStudent} onClose={() => setEditStudent(null)} />}
       </Modal>
 
       <ConfirmDialog

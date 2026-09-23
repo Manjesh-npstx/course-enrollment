@@ -73,10 +73,16 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
 
-  register: (name: string, email: string, password: string) =>
+  register: (name: string, email: string, password: string, role?: string) =>
     request<{ user: { id: number; name: string; email: string; role: string }; token: string }>(
       '/auth/register',
-      { method: 'POST', body: JSON.stringify({ name, email, password }) },
+      { method: 'POST', body: JSON.stringify({ name, email, password, ...(role ? { role } : {}) }) },
+    ),
+
+  switchRole: (role?: 'admin' | 'student') =>
+    request<{ user: { id: number; name: string; email: string; role: string }; token: string }>(
+      '/auth/switch-role',
+      { method: 'POST', body: JSON.stringify(role ? { role } : {}) },
     ),
 
   // Courses

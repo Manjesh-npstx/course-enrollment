@@ -19,6 +19,7 @@ export function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [courseLoading, setCourseLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -60,6 +61,15 @@ export function CourseDetailPage() {
     fetchCourse();
     fetchStudents();
   }, [fetchCourse, fetchStudents]);
+
+  const fetchAllCourses = useCallback(async () => {
+    try {
+      const res = await api.getCourses(1, 100);
+      setAllCourses(res.data);
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchAllCourses(); }, [fetchAllCourses]);
 
   const handleEnroll = async (data: CreateStudentDto) => {
     try {
@@ -201,7 +211,7 @@ export function CourseDetailPage() {
       </Modal>
 
       <Modal open={!!editStudent} onClose={() => setEditStudent(null)} title="Edit Student">
-        {editStudent && <EditStudentForm student={editStudent} onSubmit={handleEditStudent} onClose={() => setEditStudent(null)} />}
+        {editStudent && <EditStudentForm student={editStudent} courses={allCourses} isAdmin={isAdmin} onSubmit={handleEditStudent} onClose={() => setEditStudent(null)} />}
       </Modal>
 
       <ConfirmDialog

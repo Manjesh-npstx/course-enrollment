@@ -1,0 +1,34 @@
+server:
+  port: ${PORT:3000}
+
+spring:
+  application:
+    name: course-enrollment
+  datasource:
+    url: jdbc:sqlite:database.sqlite
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      connection-timeout: 30000
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: true
+    properties:
+      hibernate:
+        format_sql: true
+        connection:
+          foreign_keys: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:course-enrollment-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256}
+    expiration-ms: 86400000
+
+springdoc:
+  swagger-ui:
+    path: /docs
+  api-docs:
+    path: /v3/api-docs

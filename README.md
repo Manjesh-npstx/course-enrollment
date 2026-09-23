@@ -1,56 +1,77 @@
 # Course Enrollment API
 
-A RESTful API for managing course enrollments built with **NestJS**, **TypeORM**, and **SQLite**. Includes a **React** frontend with professional UI, JWT authentication, and full CRUD operations.
+A robust RESTful API for managing course enrollments built with **Spring Boot 3 (Java 21)**, **Spring Data JPA**, **Hibernate**, and **SQLite**. Includes a modern **React** frontend (Vite, React 19), stateless **JWT authentication** with role-based access control, Swagger OpenAPI documentation, comprehensive unit tests, and full CRUD operations with transactional seat limit enforcement.
 
 ## Features
 
-- Full CRUD operations for Courses and Students
-- **JWT authentication** — register/login, token-based route protection
-- **Seat limit enforcement** — rejects enrollment when a course is full
-- Request validation on all endpoints
-- Pagination and search filtering
-- Structured error responses (400, 401, 404, 409)
-- One-to-many relationship between Courses and Students
-- React frontend with auth, course management, student management
-- **Swagger API docs** at `/docs`
+- **Full CRUD operations** for Courses and Students
+- **JWT authentication & RBAC** — register/login, role-based route protection (`admin` vs `student`)
+- **Default Seeded Admin** — `admin@campus.com` / `admin123`
+- **Seat limit enforcement** — transactional check rejects enrollment (HTTP 409) when a course is full
+- **Concurrent safety** — prevents race conditions during enrollment and course capacity updates
+- **Request validation** using Jakarta Validation (`@NotBlank`, `@Email`, `@Min`, `@Size`)
+- **Pagination and search filtering** on course and student lists
+- **Parent-Child listing** — `GET /courses/{id}/students` with pagination
+- **Structured error responses** (400, 401, 403, 404, 409) matching client contracts
+- **Swagger / OpenAPI 3.0 API docs** at `/docs`
+- **React 19 frontend** with clean UI, auth management, course/student management, and transfer capabilities
+- **Multi-stage Dockerfile** for containerized production deployment
 
 ## Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
-| NestJS | Backend framework |
-| TypeORM | ORM for database operations |
-| SQLite | File-based database |
-| class-validator | Request validation |
-| Passport + JWT | Authentication |
-| bcryptjs | Password hashing |
-| React 19 | Frontend |
-| Vite | Frontend bundler |
-| React Router | Client-side routing |
-| TypeScript | Language |
+| Java 21 | Programming Language |
+| Spring Boot 3.3.4 | Backend framework |
+| Spring Data JPA / Hibernate 6 | ORM & data access |
+| SQLite | File-based database (`database.sqlite`) |
+| Spring Security | Authentication & Authorization |
+| JJWT 0.12.6 | JWT token generation and validation |
+| SpringDoc OpenAPI 2.6.0 | Interactive Swagger documentation at `/docs` |
+| JUnit 5 + Mockito | Automated unit testing |
+| React 19 + Vite | Modern frontend SPA |
+| TypeScript | Frontend language |
 
 ## Project Setup
 
+### Prerequisites
+
+- Java 21+ (Oracle JDK or Eclipse Temurin)
+- Maven 3.9+ (or use the included `./mvnw` wrapper)
+- Node.js 18+ (for frontend)
+
+### Running the Backend
+
 ```bash
-# Install dependencies
-npm install
+# Using Maven wrapper
+./mvnw spring-boot:run
 
-# Start development server (backend)
-npm run start:dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm run start:prod
-
-# Frontend
-cd frontend
-npm install
-npm run dev    # http://localhost:5173
+# Or package and run jar
+./mvnw clean package
+java -jar target/course-enrollment-0.0.1-SNAPSHOT.jar
 ```
 
-Server runs on `http://localhost:3000` by default. Set `PORT` env variable to change.
+The server starts on `http://localhost:3000` by default. Set the `PORT` environment variable to override (e.g. `PORT=8080 ./mvnw spring-boot:run`).
+
+### Running the Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on `http://localhost:5173`.
+
+### Running Tests
+
+```bash
+# Run unit tests (JUnit 5 + Mockito)
+./mvnw test
+
+# Run End-to-End integration test suite (35 assertions)
+bash test-e2e.sh
+```
 
 ### Docker
 
@@ -68,45 +89,47 @@ docker run -p 3000:3000 course-enrollment
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/auth/register` | No | Register a new user |
+| `POST` | `/auth/register` | No | Register a new user (`student` or `admin`) |
 | `POST` | `/auth/login` | No | Login and receive JWT token |
 
 ### Courses
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/courses` | Yes | Create a course |
-| `GET` | `/courses` | No | List courses (paginated) |
-| `GET` | `/courses/:id` | No | Get a course |
-| `PATCH` | `/courses/:id` | Yes | Update a course |
-| `DELETE` | `/courses/:id` | Yes | Delete a course |
-| `GET` | `/courses/:id/students` | No | List students in a course |
+| `POST` | `/courses` | Admin | Create a course |
+| `GET` | `/courses` | Public | List courses (paginated) |
+| `GET` | `/courses/{id}` | Public | Get a course by ID |
+| `PATCH` | `/courses/{id}` | Admin | Update course details / seat limit |
+| `DELETE` | `/courses/{id}` | Admin | Delete a course and its students |
+| `GET` | `/courses/{id}/students` | Public | List students enrolled in a course |
 
 ### Students
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/students` | Yes | Enroll a student |
-| `GET` | `/students` | No | List students (paginated) |
-| `GET` | `/students/:id` | No | Get a student |
-| `PATCH` | `/students/:id` | Yes | Update a student |
-| `DELETE` | `/students/:id` | Yes | Unenroll a student |
+| `POST` | `/students` | Admin | Enroll a student in a course |
+| `GET` | `/students` | Public | List all students (paginated) |
+| `GET` | `/students/{id}` | Public | Get a student by ID |
+| `PATCH` | `/students/{id}` | Admin | Update student details / transfer course |
+| `DELETE` | `/students/{id}` | Admin | Unenroll a student |
 
-**Auth:** Send `Authorization: Bearer <token>` header for protected endpoints.
+### Interactive API Documentation
+
+Visit **`http://localhost:3000/docs`** to test endpoints via Swagger UI.
 
 ## Query Parameters
 
-All `GET` list endpoints support:
+All `GET` list endpoints (`/courses`, `/students`, `/courses/{id}/students`) support:
 
 | Param | Default | Description |
 |-------|---------|-------------|
-| `page` | `1` | Page number |
+| `page` | `1` | 1-based page number |
 | `limit` | `10` | Items per page (max: 50) |
-| `search` | — | Filter by name/instructor/email |
+| `search` | — | Substring filter (courses: name/instructor; students: name/email) |
 
 **Example:** `GET /courses?search=math&page=1&limit=5`
 
-### Response Format
+### Paginated Response Format
 
 ```json
 {
@@ -122,7 +145,7 @@ All `GET` list endpoints support:
 
 ## Examples (curl)
 
-All write endpoints require a JWT token. Login first to get one:
+All write endpoints require an admin JWT token. Obtain one by logging in:
 
 ```bash
 # Login as admin
@@ -136,7 +159,7 @@ TOKEN=$(curl -s -X POST http://localhost:3000/auth/register \
   -d '{"name":"John Doe","email":"john@example.com","password":"pass123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
 ```
 
-### Create a course (admin only)
+### Create a Course (Admin)
 
 ```bash
 curl -X POST http://localhost:3000/courses \
@@ -145,7 +168,7 @@ curl -X POST http://localhost:3000/courses \
   -d '{"name":"Math 101","instructor":"Dr. Smith","seatLimit":30}'
 ```
 
-### Enroll a student (admin only)
+### Enroll a Student (Admin)
 
 ```bash
 curl -X POST http://localhost:3000/students \
@@ -154,16 +177,16 @@ curl -X POST http://localhost:3000/students \
   -d '{"name":"John Doe","email":"john@example.com","courseId":1}'
 ```
 
-### Test seat limit (set seatLimit to 2, enroll 3 students)
+### Seat Limit Enforcement Edge Case
 
 ```bash
-# Create course with 2 seats (admin only)
+# 1. Create a course with 2 seats
 curl -X POST http://localhost:3000/courses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"name":"Physics","instructor":"Dr. Jones","seatLimit":2}'
+  -d '{"name":"Physics 101","instructor":"Dr. Jones","seatLimit":2}'
 
-# Enroll 2 students (both succeed, admin only)
+# 2. Enroll 2 students (both succeed)
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -174,113 +197,82 @@ curl -X POST http://localhost:3000/students \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Bob","email":"bob@test.com","courseId":1}'
 
-# Third enrollment FAILS with 409 Conflict
+# 3. Third enrollment fails with 409 Conflict
 curl -X POST http://localhost:3000/students \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"name":"Charlie","email":"charlie@test.com","courseId":1}'
-# Response: {"message":"Course is full. Cannot enroll more students.","error":"Conflict","statusCode":409}
-```
-
-### Pagination
-
-```bash
-# Get page 2 with 5 items per page
-curl "http://localhost:3000/courses?page=2&limit=5"
-```
-
-### Search
-
-```bash
-# Search courses by name or instructor
-curl "http://localhost:3000/courses?search=Smith"
-
-# Search students by name or email
-curl "http://localhost:3000/students?search=alice"
+# Response: {"statusCode":409,"message":"Course is full. Cannot enroll more students.","error":"Conflict"}
 ```
 
 ## Error Responses
 
-| Status | Meaning | Example |
-|--------|---------|---------|
-| `400` | Validation failure | Missing required field, invalid email |
-| `401` | Unauthorized | Missing or invalid JWT token |
-| `404` | Entity not found | Course/Student ID doesn't exist |
-| `409` | Business rule violation | Course is full |
-| `500` | Server error | Unexpected failure |
-
-## Validation Rules
-
-### Course
-
-| Field | Rules |
-|-------|-------|
-| `name` | Required, string, max 255 chars |
-| `instructor` | Required, string, max 255 chars |
-| `seatLimit` | Required, integer, minimum 1 |
-
-### Student
-
-| Field | Rules |
-|-------|-------|
-| `name` | Required, string, max 255 chars |
-| `email` | Required, valid email format |
-| `enrollDate` | Optional, ISO date (defaults to today) |
-| `courseId` | Required, must reference existing course |
+| Status | Meaning | Example Response |
+|--------|---------|------------------|
+| `400` | Bad Request / Validation Failure | `{"statusCode":400,"message":["email must be an email"],"error":"Bad Request"}` |
+| `401` | Unauthorized | `{"statusCode":401,"message":"Invalid credentials","error":"Unauthorized"}` |
+| `403` | Forbidden | `{"statusCode":403,"message":"Admin access required","error":"Forbidden"}` |
+| `404` | Entity Not Found | `{"statusCode":404,"message":"Course with ID 999 not found","error":"Not Found"}` |
+| `409` | Conflict | `{"statusCode":409,"message":"Course is full. Cannot enroll more students.","error":"Conflict"}` |
+| `500` | Internal Server Error | `{"statusCode":500,"message":"Internal server error","error":"Internal Server Error"}` |
 
 ## Project Structure
 
 ```
-src/
-├── auth/
-│   ├── dto/
-│   │   └── auth.dto.ts
-│   ├── strategies/
-│   │   └── jwt.strategy.ts
-│   ├── user.entity.ts
-│   ├── auth.controller.ts
-│   ├── auth.service.ts
-│   ├── auth.module.ts
-│   ├── auth.constants.ts
-│   └── jwt-auth.guard.ts
-├── courses/
-│   ├── dto/
-│   │   ├── create-course.dto.ts
-│   │   └── update-course.dto.ts
-│   ├── course.entity.ts
-│   ├── course.controller.ts
-│   ├── course.service.ts
-│   └── course.module.ts
-├── students/
-│   ├── dto/
-│   │   ├── create-student.dto.ts
-│   │   └── update-student.dto.ts
-│   ├── student.entity.ts
-│   ├── student.controller.ts
-│   ├── student.service.ts
-│   └── student.module.ts
-├── app.module.ts
-└── main.ts
-frontend/
+course-enrollment/
+├── pom.xml                                      # Maven dependencies & build config
+├── mvnw / mvnw.cmd / .mvn/                      # Maven Wrapper
+├── Dockerfile                                   # Multi-stage production container
+├── test-e2e.sh                                  # 35-assertion automated E2E test script
+├── database.sqlite                              # SQLite database file
 ├── src/
-│   ├── components/
-│   │   ├── Layout/
-│   │   ├── Course/
-│   │   └── Student/
-│   ├── context/
-│   │   └── AuthContext.tsx
-│   ├── pages/
-│   │   ├── LoginPage.tsx
-│   │   ├── RegisterPage.tsx
-│   │   ├── CoursesPage.tsx
-│   │   ├── CourseDetailPage.tsx
-│   │   └── StudentsPage.tsx
-│   ├── services/
-│   │   └── api.ts
-│   ├── types/
-│   │   └── index.ts
-│   ├── App.tsx
-│   └── App.css
+│   ├── main/
+│   │   ├── java/com/courseenrollment/
+│   │   │   ├── CourseEnrollmentApplication.java # Application entrypoint
+│   │   │   ├── config/
+│   │   │   │   ├── SecurityConfig.java          # Stateless JWT security filter chain
+│   │   │   │   ├── JwtAuthFilter.java           # Bearer token validation filter
+│   │   │   │   ├── JwtService.java              # JJWT cryptographic token service
+│   │   │   │   ├── WebMvcConfig.java            # Global CORS configuration
+│   │   │   │   ├── OpenApiConfig.java           # Swagger / OpenAPI 3.0 configuration
+│   │   │   │   └── DataInitializer.java         # Initial seed for admin account
+│   │   │   ├── common/
+│   │   │   │   ├── dto/
+│   │   │   │   │   ├── PageMeta.java            # Pagination metadata
+│   │   │   │   │   ├── PaginatedResponse.java   # Generic paginated wrapper
+│   │   │   │   │   └── ApiErrorResponse.java    # Standard error response body
+│   │   │   │   └── exception/
+│   │   │   │       ├── BadRequestException.java
+│   │   │   │       ├── ConflictException.java
+│   │   │   │       ├── ResourceNotFoundException.java
+│   │   │   │       └── GlobalExceptionHandler.java
+│   │   │   ├── auth/
+│   │   │   │   ├── entity/User.java             # User JPA entity
+│   │   │   │   ├── enums/UserRole.java          # Admin / Student enum
+│   │   │   │   ├── repository/UserRepository.java
+│   │   │   │   ├── dto/                         # RegisterRequest, LoginRequest, AuthResponse, UserDto
+│   │   │   │   ├── service/AuthService.java
+│   │   │   │   └── controller/AuthController.java
+│   │   │   ├── course/
+│   │   │   │   ├── entity/Course.java           # Course JPA entity (1-to-many with Student)
+│   │   │   │   ├── repository/CourseRepository.java
+│   │   │   │   ├── dto/                         # CreateCourseRequest, UpdateCourseRequest
+│   │   │   │   ├── service/CourseService.java   # Course logic, capacity checks, cascade
+│   │   │   │   └── controller/CourseController.java
+│   │   │   └── student/
+│   │   │       ├── entity/Student.java          # Student JPA entity (many-to-1 with Course)
+│   │   │       ├── repository/StudentRepository.java
+│   │   │       ├── dto/                         # CreateStudentRequest, UpdateStudentRequest
+│   │   │       ├── service/StudentService.java  # Enrollment, transfer, seat limits
+│   │   │       └── controller/StudentController.java
+│   │   └── resources/
+│   │       └── application.yml                  # Port 3000, SQLite dialect, JPA, Swagger paths
+│   └── test/
+│       └── java/com/courseenrollment/
+│           ├── auth/AuthServiceTest.java        # Unit tests for authentication
+│           ├── course/CourseServiceTest.java    # Unit tests for course operations
+│           └── student/StudentServiceTest.java  # Unit tests for student enrollment & seat limit
+└── frontend/                                    # React 19 + TypeScript + Vite SPA
 ```
 
 ## License

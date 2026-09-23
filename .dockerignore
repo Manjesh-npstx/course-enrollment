@@ -1,7 +1,10 @@
-node_modules
-dist
-database.sqlite
-frontend
+target/
+node_modules/
+frontend/
+backend-nestjs/
+dist/
+*.sqlite
 .git
+.gitignore
 *.md
-*.sh
+test-e2e.sh

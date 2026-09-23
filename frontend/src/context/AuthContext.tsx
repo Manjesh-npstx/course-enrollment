@@ -13,7 +13,8 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role?: string) => Promise<void>;
+  switchRole: (role?: 'admin' | 'student') => Promise<void>;
   logout: () => void;
 }
 
@@ -55,8 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    const res = await api.register(name, email, password);
+  const register = async (name: string, email: string, password: string, role?: string) => {
+    const res = await api.register(name, email, password, role);
+    setAuthToken(res.token);
+    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const switchRole = async (targetRole?: 'admin' | 'student') => {
+    const res = await api.switchRole(targetRole);
     setAuthToken(res.token);
     const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
     localStorage.setItem('auth_user', JSON.stringify(userData));
@@ -72,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, switchRole, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import type { Student, UpdateStudentDto } from '../../types';
+import type { Course, Student, UpdateStudentDto } from '../../types';
 
 interface EditStudentFormProps {
   student: Student;
+  courses?: Course[];
+  isAdmin?: boolean;
   onSubmit: (data: UpdateStudentDto) => Promise<void>;
   onClose: () => void;
 }
 
-export function EditStudentForm({ student, onSubmit, onClose }: EditStudentFormProps) {
+export function EditStudentForm({ student, courses = [], isAdmin = false, onSubmit, onClose }: EditStudentFormProps) {
   const [name, setName] = useState(student.name);
   const [email, setEmail] = useState(student.email);
   const [enrollDate, setEnrollDate] = useState(student.enrollDate);
+  const [courseId, setCourseId] = useState(student.courseId);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,6 +21,7 @@ export function EditStudentForm({ student, onSubmit, onClose }: EditStudentFormP
     setName(student.name);
     setEmail(student.email);
     setEnrollDate(student.enrollDate);
+    setCourseId(student.courseId);
   }, [student]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,12 +29,18 @@ export function EditStudentForm({ student, onSubmit, onClose }: EditStudentFormP
     setError('');
     setLoading(true);
 
+    const data: UpdateStudentDto = {
+      name: name.trim(),
+      email: email.trim(),
+      enrollDate,
+    };
+
+    if (isAdmin && courseId !== student.courseId) {
+      data.courseId = courseId;
+    }
+
     try {
-      await onSubmit({
-        name: name.trim(),
-        email: email.trim(),
-        enrollDate,
-      });
+      await onSubmit(data);
       onClose();
     } catch (err: any) {
       const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
@@ -77,6 +87,21 @@ export function EditStudentForm({ student, onSubmit, onClose }: EditStudentFormP
           onChange={(e) => setEnrollDate(e.target.value)}
         />
       </div>
+
+      {isAdmin && courses.length > 0 && (
+        <div className="form-group">
+          <label>Transfer to Course</label>
+          <select
+            className="input"
+            value={courseId}
+            onChange={(e) => setCourseId(Number(e.target.value))}
+          >
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.instructor})</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="modal-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
