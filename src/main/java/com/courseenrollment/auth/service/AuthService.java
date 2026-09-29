@@ -89,10 +89,10 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
         User user = userRepository.findByEmail(req.getEmail().trim())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+                .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Invalid username or password");
         }
 
         String token = jwtService.generateToken(

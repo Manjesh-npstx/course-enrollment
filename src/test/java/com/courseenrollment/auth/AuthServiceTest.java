@@ -102,7 +102,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(req))
                 .isInstanceOf(BadCredentialsException.class)
-                .hasMessage("Invalid credentials");
+                .hasMessage("Invalid username or password");
     }
 
     @Test
@@ -114,6 +114,6 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(req))
                 .isInstanceOf(BadCredentialsException.class)
-                .hasMessage("Invalid credentials");
+                .hasMessage("Invalid username or password");
     }
 }

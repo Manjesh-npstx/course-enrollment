@@ -1,700 +1,722 @@
-# Course Enrollment System — Complete Backend Architecture & Implementation Guide
+# Beginner's Guide to Spring Boot: Understanding Your Course Enrollment Project
 
-> **Stack:** Spring Boot 3.3.4 | Java 21 LTS | Spring Data JPA | Hibernate 6 | SQLite | Spring Security 6 | JJWT 0.12.6 | SpringDoc OpenAPI 2.6.0  
-> **Target:** Production-Grade RESTful API for Course Enrollment & Student Lifecycle Management
+Welcome to Spring Boot! If this is your first Spring Boot project, it might feel like there is a lot of "magic" happening under the hood—annotations everywhere, classes talking to each other without explicit `new` keywords, and database queries executing without writing SQL.
+
+This guide will demystify all of that. We'll break down **what Spring Boot is**, **how it works**, and **walk through every piece of this project step-by-step** using real code from your repository.
 
 ---
 
 ## Table of Contents
 
-1. [Architectural Overview](#1-architectural-overview)
-2. [Technology Stack & Design Choices](#2-technology-stack--design-choices)
-3. [System Architecture & Layering](#3-system-architecture--layering)
-4. [Database Design & SQLite Integration](#4-database-design--sqlite-integration)
-5. [Configuration & Security Architecture](#5-configuration--security-architecture)
-   - [Spring Security 6 Configuration](#spring-security-6-configuration)
-   - [Stateless JWT Authentication Filter](#stateless-jwt-authentication-filter)
-   - [Token Generation & Verification Service](#token-generation--verification-service)
-   - [CORS Handling](#cors-handling)
-   - [Automatic Data Seeding](#automatic-data-seeding)
-   - [OpenAPI / Swagger Documentation](#openapi--swagger-documentation)
-6. [Data Model & Entities](#6-data-model--entities)
-   - [User Entity & Role System](#user-entity--role-system)
-   - [Course Entity](#course-entity)
-   - [Student Entity](#student-entity)
-7. [Repository Layer (Spring Data JPA)](#7-repository-layer-spring-data-jpa)
-8. [Business Logic & Service Layer](#8-business-logic--service-layer)
-   - [AuthService: Registration, Login & Role Switching](#authservice-registration-login--role-switching)
-   - [CourseService: CRUD, Search & Seat-Limit Guard](#courseservice-crud-search--seat-limit-guard)
-   - [StudentService: Enrollment, Transfer & Capacity Validation](#studentservice-enrollment-transfer--capacity-validation)
-9. [Controller Layer & REST API Endpoints](#9-controller-layer--rest-api-endpoints)
-10. [DTOs, Validation & Serialization](#10-dtos-validation--serialization)
-11. [Error Handling & Global Exception Handler](#11-error-handling--global-exception-handler)
-12. [Seat-Limit Invariant & Concurrency Protections](#12-seat-limit-invariant--concurrency-protections)
-13. [Testing Strategy](#13-testing-strategy)
-    - [Unit Tests (JUnit 5 + Mockito)](#unit-tests-junit-5--mockito)
-    - [End-to-End Tests (Bash + cURL Integration Suite)](#end-to-end-tests-bash--curl-integration-suite)
-14. [Build, Deployment & Dockerization](#14-build-deployment--dockerization)
-15. [Directory Layout](#15-directory-layout)
+1. [What is Spring Boot & Why Do We Use It?](#1-what-is-spring-boot--why-do-we-use-it)
+   - [The Problem with Plain Java](#the-problem-with-plain-java)
+   - [Core Concepts: IoC, DI, and Beans](#core-concepts-ioc-di-and-beans)
+2. [What Does This Project Do?](#2-what-does-this-project-do)
+   - [Business Domain: Course Enrollment](#business-domain-course-enrollment)
+   - [High-Level Architecture](#high-level-architecture)
+3. [The Anatomy of Your Spring Boot Project](#3-the-anatomy-of-your-spring-boot-project)
+   - [Where It All Begins: `@SpringBootApplication`](#where-it-all-begins-springbootapplication)
+   - [Maven & `pom.xml`: Managing Dependencies](#maven--pomxml-managing-dependencies)
+   - [Configuration: `application.yml`](#configuration-applicationyml)
+4. [The 3-Layer Architecture Pattern](#4-the-3-layer-architecture-pattern)
+   - [Layer 1: The Controller Layer (Handling Requests)](#layer-1-the-controller-layer-handling-requests)
+   - [Layer 2: The Service Layer (Business Logic)](#layer-2-the-service-layer-business-logic)
+   - [Layer 3: The Repository Layer (Database Access)](#layer-3-the-repository-layer-database-access)
+   - [Data Models: Entities vs DTOs](#data-models-entities-vs-dtos)
+5. [The Life of an HTTP Request (Step-by-Step Walkthrough)](#5-the-life-of-an-http-request-step-by-step-walkthrough)
+   - [Tracing `POST /students` (Enrolling a Student)](#tracing-post-students-enrolling-a-student)
+6. [Spring Boot Annotations Cheat Sheet](#6-spring-boot-annotations-cheat-sheet)
+7. [Security & Authentication Explained](#7-security--authentication-explained)
+   - [The Filter Chain Analogy](#the-filter-chain-analogy)
+   - [What is a JWT (JSON Web Token)?](#what-is-a-jwt-json-web-token)
+   - [Role-Based Access Control (`ADMIN` vs `STUDENT`)](#role-based-access-control-admin-vs-student)
+8. [Database & JPA (No SQL Required!)](#8-database--jpa-no-sql-required)
+   - [What is an ORM (Hibernate)?](#what-is-an-orm-hibernate)
+   - [Spring Data JPA Magic](#spring-data-jpa-magic)
+   - [Why SQLite with HikariCP?](#why-sqlite-with-hikaricp)
+9. [Error Handling: The Safety Net](#9-error-handling-the-safety-net)
+10. [How to Run, Test, and Explore the Project](#10-how-to-run-test-and-explore-the-project)
 
 ---
 
-## 1. Architectural Overview
+## 1. What is Spring Boot & Why Do We Use It?
 
-The backend of the **Course Enrollment System** is a high-performance, stateless RESTful service engineered with **Spring Boot 3.3.4** running on **Java 21 (LTS)**. It powers a modern course management and enrollment workflow, enforcing strict business rules such as:
+### The Problem with Plain Java
+In a traditional Java web application, you would need to:
+1. Manually configure an external web server like Apache Tomcat.
+2. Manually write JDBC code with raw SQL strings (`SELECT * FROM courses...`).
+3. Manually create every object using `new CourseService(new CourseRepository())`.
+4. Manually parse JSON strings into Java objects and handle errors.
 
-- Hard capacity enforcement (seats cannot be oversold under concurrent requests).
-- Safe capacity reduction (a course capacity cannot be reduced below the count of students already enrolled).
-- Zero-loss course transfers (transferring a student to another course checks available seats first).
-- Clean orphan unlinking (un-enrolling a student cleanly disassociates them from the course graph).
-- Granular Role-Based Access Control (RBAC) separating **ADMIN** operations (write/mutation) from **STUDENT** operations (read/browse).
-- Zero downtime role toggling for live testing and grading demonstrations.
-
-```
-       ┌────────────────────────────────────────────────────────┐
-       │                  Client (React 19)                     │
-       └───────────────────────────┬────────────────────────────┘
-                                   │ HTTP / JSON
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Spring Boot 3 Application                       │
-│                                                                        │
-│  ┌───────────────────────┐              ┌───────────────────────────┐  │
-│  │   Security Filter     │              │    Global Exception       │  │
-│  │  (JwtAuthFilter/CORS) │              │        Handler            │  │
-│  └──────────┬────────────┘              └─────────────▲─────────────┘  │
-│             │ Authenticated & Authorized              │ Throws         │
-│             ▼                                         │                │
-│  ┌────────────────────────────────────────────────────┴─────────────┐  │
-│  │                     Controllers (@RestController)                │  │
-│  │        AuthController  │  CourseController  │  StudentController │  │
-│  └──────────────────────────────────┬───────────────────────────────┘  │
-│                                     │ DTOs / Requests                  │
-│                                     ▼                                  │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                     Services (@Transactional)                    │  │
-│  │         AuthService    │    CourseService   │   StudentService   │  │
-│  └──────────────────────────────────┬───────────────────────────────┘  │
-│                                     │ Entities                         │
-│                                     ▼                                  │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                 Repositories (Spring Data JPA)                   │  │
-│  │        UserRepository  │  CourseRepository  │  StudentRepository │  │
-│  └──────────────────────────────────┬───────────────────────────────┘  │
-│                                     │ JPQL / SQL Queries               │
-│                                     ▼                                  │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │                       Hibernate 6 Dialect                        │  │
-│  └──────────────────────────────────┬───────────────────────────────┘  │
-└─────────────────────────────────────┼──────────────────────────────────┘
-                                      │ JDBC
-                                      ▼
-                        ┌───────────────────────────┐
-                        │    SQLite (database.db)   │
-                        └───────────────────────────┘
-```
+**Spring Boot** solves this by providing:
+- **Embedded Web Server:** Tomcat is packaged inside your app. You just run `main()` and your server starts on port `3000`.
+- **Auto-Configuration:** Spring Boot inspects the libraries on your classpath (like SQLite and Hibernate) and automatically wires up database connections, JSON parsers, and web servers.
+- **Dependency Injection:** You declare *what* your classes need, and Spring automatically creates and supplies those dependencies.
 
 ---
 
-## 2. Technology Stack & Design Choices
+### Core Concepts: IoC, DI, and Beans
 
-| Component | Technology | Rationale |
-|---|---|---|
-| **Runtime** | Java 21 (LTS) | Modern Java features (pattern matching, records, virtual threads capability, enhanced type safety, high JVM performance). |
-| **Framework** | Spring Boot 3.3.4 | Enterprise-standard application framework offering auto-configuration, dependency injection, and declarative transaction management. |
-| **Security** | Spring Security 6 + JJWT 0.12.6 | Modern, component-based security filter chain with HMAC-SHA256 stateless JSON Web Tokens. |
-| **Persistence** | Spring Data JPA / Hibernate 6 | Object-Relational Mapping (ORM) allowing type-safe entity definitions, declarative pagination, and transactional consistency. |
-| **Dialect** | `hibernate-community-dialects` | Supplies native SQLite support for Hibernate 6, translating JPQL queries into optimal SQLite SQL. |
-| **Database** | SQLite 3 via `sqlite-jdbc` | Portable, zero-configuration embedded database engine storing data into `database.sqlite` file. |
-| **Connection Pool** | HikariCP (`maximum-pool-size: 1`) | Prevents SQLite database lock contentions (`SQLITE_BUSY`) by serializing write operations cleanly through a single managed connection. |
-| **Validation** | Jakarta Bean Validation (Hibernate Validator) | Declarative field-level constraints (`@NotBlank`, `@Min`, `@Email`, `@Size`) executing before service execution. |
-| **Documentation** | SpringDoc OpenAPI 2.6.0 | Swagger UI and OpenAPI 3.0 specification served directly at `/docs` with interactive JWT authentication support. |
+You will hear three terms constantly in the Spring world:
 
----
+#### 1. Bean
+A **Bean** is simply a Java object that is instantiated, assembled, and managed by Spring's container rather than by you with `new MyObject()`.
 
-## 3. System Architecture & Layering
-
-The codebase follows the strict **Clean Layered Architecture** pattern:
-
-1. **Presentation Layer (`controller`)**:
-   - Accepts HTTP requests, parses query parameters, deserializes JSON request bodies into strongly-typed DTOs, triggers Jakarta Bean Validation, and maps domain entities/results to HTTP `ResponseEntity` structures.
-   - Enforces RBAC permissions using `@PreAuthorize("hasRole('ADMIN')")`.
-
-2. **Application / Business Logic Layer (`service`)**:
-   - Encapsulates domain logic, validates business invariants (e.g. seat capacity checks, email uniqueness, target course availability), coordinates multiple repositories, and defines transaction boundaries via `@Transactional`.
-
-3. **Data Access Layer (`repository`)**:
-   - Inherits from `JpaRepository<T, ID>`, providing built-in CRUD operations, dynamic pagination via `Pageable`, and optimized JPQL search queries.
-
-4. **Domain Model Layer (`entity`)**:
-   - JPA-annotated models representing database tables (`users`, `courses`, `students`), complete with lifecycle hooks (`@PrePersist`, `@PreUpdate`) for automatic timestamp management.
-
-5. **Cross-Cutting Concerns (`config`, `common.exception`)**:
-   - Intercepts requests for authentication (`JwtAuthFilter`), handles cross-origin requests (`WebMvcConfig`, `SecurityConfig`), and catches all system exceptions into standardized error payloads (`GlobalExceptionHandler`).
-
----
-
-## 4. Database Design & SQLite Integration
-
-### Relational Schema
-
-```
- ┌────────────────────────────────────────┐
- │                 users                  │
- ├───────────────────┬────────────────────┤
- │ id                │ BIGINT (PK, Auto)  │
- │ email             │ VARCHAR (Unique)   │
- │ name              │ VARCHAR            │
- │ password          │ VARCHAR (BCrypt)   │
- │ role              │ VARCHAR            │
- │ created_at        │ TIMESTAMP          │
- │ updated_at        │ TIMESTAMP          │
- └───────────────────┴────────────────────┘
-
- ┌────────────────────────────────────────┐       ┌────────────────────────────────────────┐
- │                courses                 │       │                students                │
- ├───────────────────┬────────────────────┤       ├───────────────────┬────────────────────┤
- │ id                │ BIGINT (PK, Auto)  │ 1   * │ id                │ BIGINT (PK, Auto)  │
- │ name              │ VARCHAR            ├───────┤ course_id         │ BIGINT (FK, NotNull│
- │ instructor        │ VARCHAR            │       │ name              │ VARCHAR            │
- │ seat_limit        │ INT                │       │ email             │ VARCHAR (Unique)   │
- │ created_at        │ TIMESTAMP          │       │ enroll_date       │ VARCHAR            │
- │ updated_at        │ TIMESTAMP          │       │ created_at        │ TIMESTAMP          │
- └───────────────────┴────────────────────┘       │ updated_at        │ TIMESTAMP          │
-                                                  └───────────────────┴────────────────────┘
-```
-
-### Hibernate 6 & SQLite Dialect Configuration
-SQLite is a serverless, file-based database that requires specific settings to work reliably with an ORM:
-
-1. **Foreign Key Enforcement**: SQLite disables foreign keys by default for backward compatibility. Enabled via `hibernate.connection.foreign_keys: true` in `application.yml`.
-2. **Connection Pooling**: SQLite locks the database file during writes. To prevent multi-threaded connection pools from tripping over `database is locked` errors, HikariCP is constrained to `maximum-pool-size: 1`:
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:sqlite:database.sqlite
-       driver-class-name: org.sqlite.JDBC
-       hikari:
-         maximum-pool-size: 1
-         connection-timeout: 30000
-     jpa:
-       database-platform: org.hibernate.community.dialect.SQLiteDialect
-       hibernate:
-         ddl-auto: update
-   ```
-3. **Eager Fetching vs. Serialization Cycles**: The `Course -> Student` one-to-many relationship uses `@JsonIgnoreProperties({"course", "students"})` and `@JsonProperty("courseId")` to avoid infinite Jackson recursion while allowing client applications to receive direct IDs and nested structures.
-
----
-
-## 5. Configuration & Security Architecture
-
-### Spring Security 6 Configuration
-Located in `com.courseenrollment.config.SecurityConfig`:
-
-- **Stateless Session Management**: `SessionCreationPolicy.STATELESS` ensures the server creates no HTTP sessions; every request is authenticated independently via JWT.
-- **CSRF Disabled**: Because tokens are delivered via the `Authorization: Bearer <token>` header rather than cookies, Cross-Site Request Forgery (CSRF) is disabled.
-- **Granular Route Permissions**:
-  - `POST /auth/**` &rarr; Open to all.
-  - `GET /courses/**` &rarr; Publicly readable (prospective students can browse courses).
-  - `GET /students/**` &rarr; Publicly readable (directory listings).
-  - `OPTIONS /**` &rarr; Pre-flight CORS allowed.
-  - `/docs/**`, `/v3/api-docs/**` &rarr; Swagger UI documentation open.
-  - `POST /courses`, `PATCH /courses/**`, `DELETE /courses/**` &rarr; Requires `ROLE_ADMIN`.
-  - `POST /students`, `PATCH /students/**`, `DELETE /students/**` &rarr; Requires `ROLE_ADMIN`.
-- **Custom Security Entry Points**: Formats 401 Unauthorized and 403 Forbidden responses to match the API standard JSON error format (`{"statusCode": 401, "message": "Unauthorized", "error": "Unauthorized"}`).
-
-### Stateless JWT Authentication Filter
-Located in `com.courseenrollment.config.JwtAuthFilter`:
-
-1. Extends `OncePerRequestFilter` to guarantee execution once per HTTP request.
-2. Inspects `Authorization` header for `Bearer <token>`.
-3. If absent, allows the request to proceed down the filter chain (public endpoints succeed; protected endpoints will fail at the authorization check).
-4. If present:
-   - Validates HMAC-SHA256 signature and expiration date via `JwtService`.
-   - Extracts subject (`userId`), `email`, and `role` claim.
-   - Converts the role claim (e.g. `admin`) to a Spring Security authority (`ROLE_ADMIN`).
-   - Populates `SecurityContextHolder.getContext().setAuthentication(authToken)`.
-
-### Token Generation & Verification Service
-Located in `com.courseenrollment.config.JwtService`:
-
-- Uses JJWT `0.12.6` with `Keys.hmacShaKeyFor(byte[])`.
-- Validates that the secret key meets HMAC-SHA256 requirements (&ge; 256 bits / 32 bytes).
-- Default expiration is set to 24 hours (`86,400,000 ms`).
-- Embeds user metadata:
-  ```java
-  Jwts.builder()
-      .subject(String.valueOf(userId))
-      .claim("email", email)
-      .claim("role", role)
-      .issuedAt(now)
-      .expiration(expiryDate)
-      .signWith(signingKey)
-      .compact();
-  ```
-
-### CORS Handling
-Dual-layer CORS handling is implemented:
-1. `SecurityConfig.corsConfigurationSource()` for the Spring Security filter chain.
-2. `WebMvcConfig.addCorsMappings()` for Spring MVC dispatcher servlet.
-- Allows origins: `http://localhost:5173` and `http://127.0.0.1:5173`.
-- Allows methods: `GET`, `POST`, `PATCH`, `DELETE`, `OPTIONS`, `PUT`.
-- Allows headers: `Content-Type`, `Authorization`, `X-Requested-With`, `Accept`, `Origin`.
-- Credentials supported: `allowCredentials(true)`.
-
-### Automatic Data Seeding
-Located in `com.courseenrollment.config.DataInitializer`:
-
-- Implements `ApplicationRunner`, executing right after Spring Boot context startup.
-- Inspects `userRepository.count()`. If empty:
-  - Generates a BCrypt-hashed password for `admin123`.
-  - Creates the default system administrator:
-    - **Email:** `admin@campus.com`
-    - **Password:** `admin123`
-    - **Role:** `ADMIN`
-
-### OpenAPI / Swagger Documentation
-Located in `com.courseenrollment.config.OpenApiConfig`:
-- Configures OpenAPI 3.0 specification.
-- Registers HTTP Bearer `JWT` security scheme named `BearerAuth`.
-- Swagger UI accessible at `http://localhost:3000/docs`.
-
----
-
-## 6. Data Model & Entities
-
-### User Entity & Role System
-- **File:** `com.courseenrollment.auth.entity.User`
-- **Table:** `users`
-- **Fields:**
-  - `id`: Auto-incrementing primary key.
-  - `email`: Non-null, unique constraint.
-  - `name`: Non-null string.
-  - `password`: BCrypt hash (60 characters).
-  - `role`: `UserRole` enum (`ADMIN`, `STUDENT`), stored as string.
-  - `createdAt`, `updatedAt`: ISO-8601 UTC timestamps set via `@PrePersist` and `@PreUpdate`.
-
-### Course Entity
-- **File:** `com.courseenrollment.course.entity.Course`
-- **Table:** `courses`
-- **Fields:**
-  - `id`: Auto-incrementing primary key.
-  - `name`: Course title (e.g., "Full-Stack Software Engineering").
-  - `instructor`: Professor / Instructor name.
-  - `seatLimit`: Maximum allowed enrollments (&ge; 1).
-  - `students`: `List<Student>` mapped by `course` foreign key, with `CascadeType.ALL` and `@OrderBy("createdAt DESC")`.
-  - `createdAt`, `updatedAt`: Timestamps.
-
-### Student Entity
-- **File:** `com.courseenrollment.student.entity.Student`
-- **Table:** `students`
-- **Fields:**
-  - `id`: Auto-incrementing primary key.
-  - `name`: Student full name.
-  - `email`: Non-null, unique constraint.
-  - `enrollDate`: String date format (`YYYY-MM-DD`). Defaults to current date if omitted.
-  - `course`: `@ManyToOne` relationship joining on `course_id`.
-  - `@JsonProperty("courseId")`: Custom getter exposing the numeric ID for frontend compatibility without sending the entire course hierarchy twice.
-
----
-
-## 7. Repository Layer (Spring Data JPA)
-
-### UserRepository
+#### 2. Inversion of Control (IoC)
+Normally, your code is in control:
 ```java
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
-    boolean existsByEmail(String email);
+// Traditional Java: YOU control object creation
+CourseRepository repo = new CourseRepository();
+CourseService service = new CourseService(repo);
+```
+With Spring, control is **inverted**: Spring creates the objects at startup and holds them in an "Application Context" (a big catalog of beans).
+
+#### 3. Dependency Injection (DI)
+When a class needs another class, Spring "injects" it automatically. For example, look at [CourseController.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/controller/CourseController.java):
+
+```java
+@RestController
+@RequestMapping("/courses")
+public class CourseController {
+
+    private final CourseService courseService;
+
+    // Spring sees this constructor, looks up the CourseService bean,
+    // and automatically passes it in!
+    public CourseController(CourseService courseService) {
+        this.courseService = courseService;
+    }
+}
+```
+You never write `new CourseService()` anywhere. Spring handles it.
+
+---
+
+## 2. What Does This Project Do?
+
+### Business Domain: Course Enrollment & Approval System
+This project is a university course enrollment backend system featuring a **3-role hierarchy** and a **course approval workflow**:
+- **Roles:**
+  - **`ADMIN`:** Full control. Can create/edit/delete any course, approve or reject instructor courses, manage all students, and manually adjust capacities.
+  - **`INSTRUCTOR`:** Can submit new courses (created in `PENDING` status awaiting admin review), manage and edit their own courses, and view student rosters.
+  - **`STUDENT`:** Can browse all `APPROVED` courses, self-enroll in available courses (`POST /courses/{id}/enroll`), and view their enrolled courses ("My Courses").
+- **Course Approval Workflow:**
+  - `PENDING`: Newly proposed courses by instructors. Only visible to the instructor and administrators.
+  - `APPROVED`: Reviewed and approved by an admin. Publicly visible in the course catalog and open for student enrollment.
+  - `REJECTED`: Rejected by an admin with course creation barred from enrollment.
+- **Capacity Rules:**
+  - A student cannot enroll in a course that is full (`409 Conflict`).
+  - A student cannot enroll in a course that is not approved (`409 Conflict`).
+  - An administrator or instructor cannot reduce a course's seat limit below the number of students already enrolled (`409 Conflict`).
+  - A student cannot be transferred to a full or unapproved course (`409 Conflict`).
+  - Student emails must be unique across the platform.
+
+---
+
+### High-Level Architecture
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   React Frontend                       │
+│              (Runs on http://localhost:5173)           │
+└───────────────────────────┬────────────────────────────┘
+                            │ HTTP JSON Requests
+                            │ (e.g. GET /courses, POST /students)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│               Spring Boot Backend (Port 3000)          │
+│                                                        │
+│  [1. JwtAuthFilter]  ──► Validates JWT Bearer Token    │
+│            │                                           │
+│            ▼                                           │
+│  [2. Controllers]    ──► Listens to HTTP routes        │
+│            │             (CourseController, etc.)      │
+│            ▼                                           │
+│  [3. Services]       ──► Enforces business logic       │
+│            │             (Seat capacity, uniqueness)   │
+│            ▼                                           │
+│  [4. Repositories]   ──► Talks to database with JPA    │
+│            │             (CourseRepository, etc.)      │
+└────────────┼───────────────────────────────────────────┘
+             │ Reads / Writes SQLite file
+             ▼
+┌────────────────────────────────────────────────────────┐
+│              database.sqlite (Disk Storage)            │
+└────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. The Anatomy of Your Spring Boot Project
+
+### Where It All Begins: `@SpringBootApplication`
+
+Open [CourseEnrollmentApplication.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/CourseEnrollmentApplication.java):
+
+```java
+package com.courseenrollment;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class CourseEnrollmentApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(CourseEnrollmentApplication.class, args);
+    }
 }
 ```
 
-### CourseRepository
+This tiny file is the entire entry point of your application!
+When you execute `main()`:
+1. **Component Scanning:** Spring scans all packages under `com.courseenrollment` looking for classes annotated with `@RestController`, `@Service`, `@Repository`, `@Component`, or `@Configuration`.
+2. **Bean Creation:** Spring instantiates those classes and injects their dependencies.
+3. **Embedded Tomcat Startup:** An embedded Tomcat HTTP web server starts up on port `3000`.
+4. **Database Connection:** Spring connects to `database.sqlite` and prepares Hibernate.
+
+---
+
+### Maven & `pom.xml`: Managing Dependencies
+
+Open [pom.xml](file:///Users/manjesh/Desktop/Course/course-enrollment/pom.xml). Maven is the build tool and package manager for Java (similar to `package.json` in Node.js).
+
+Key "starter" dependencies included:
+- `spring-boot-starter-web`: Brings in Tomcat, Spring MVC, and Jackson (JSON serializer).
+- `spring-boot-starter-data-jpa`: Brings in Hibernate and Spring Data for easy database operations.
+- `spring-boot-starter-security`: Provides authentication and role-based authorization.
+- `spring-boot-starter-validation`: Provides annotations like `@NotBlank`, `@Email`, and `@Min`.
+- `sqlite-jdbc` & `hibernate-community-dialects`: Allows Hibernate to talk to local SQLite files.
+- `jjwt-api`: Generates and verifies HMAC-SHA256 JWT tokens.
+- `springdoc-openapi-starter-webmvc-ui`: Automatically generates interactive Swagger documentation at `/docs`.
+
+---
+
+### Configuration: `application.yml`
+
+Located at [application.yml](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/resources/application.yml):
+
+```yaml
+server:
+  port: ${PORT:3000}       # Run on port 3000 (or $PORT environment variable)
+
+spring:
+  datasource:
+    url: jdbc:sqlite:database.sqlite    # Store data in database.sqlite file
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1             # SQLite writes sequentially
+  jpa:
+    hibernate:
+      ddl-auto: update                 # Automatically create/update database tables
+    properties:
+      hibernate:
+        connection:
+          foreign_keys: true           # Enforce SQLite foreign keys
+```
+
+---
+
+## 4. The 3-Layer Architecture Pattern
+
+In enterprise Spring applications, code is organized into **three distinct layers**. Each layer has one job:
+
+```
+[ HTTP Request ] 
+       │
+       ▼
+ 1. Controller Layer  ── "What is being requested?" (Routes & JSON validation)
+       │
+       ▼
+ 2. Service Layer     ── "Are the rules satisfied?" (Business logic & calculations)
+       │
+       ▼
+ 3. Repository Layer  ── "Store or retrieve the data" (Database queries)
+       │
+       ▼
+ [ SQLite Database ]
+```
+
+Let's look at each layer using the **Course** module as an example.
+
+---
+
+### Layer 1: The Controller Layer (Handling Requests)
+
+**Location:** [CourseController.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/controller/CourseController.java)
+
+The Controller is the front door of your API. It maps HTTP paths (`GET /courses`, `POST /courses`) to Java methods:
+
 ```java
+@RestController               // 1. Tells Spring: this class returns JSON data
+@RequestMapping("/courses")   // 2. Base URL path for all methods in this class
+public class CourseController {
+
+    private final CourseService courseService;
+
+    public CourseController(CourseService courseService) {
+        this.courseService = courseService;
+    }
+
+    @PostMapping              // 3. Handles HTTP POST /courses
+    @PreAuthorize("hasRole('ADMIN')")  // 4. Only ADMINs can call this
+    public ResponseEntity<Course> create(@Valid @RequestBody CreateCourseRequest req) {
+        Course course = courseService.create(req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(course);
+    }
+
+    @GetMapping               // 5. Handles HTTP GET /courses
+    public ResponseEntity<PaginatedResponse<Course>> findAll(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String search
+    ) {
+        PaginatedResponse<Course> response = courseService.findAll(page, limit, search);
+        return ResponseEntity.ok(response);
+    }
+}
+```
+
+**Notice:**
+- The controller **never** writes raw database queries or complex if/else business rules.
+- It validates the input (`@Valid`), delegates the real work to `CourseService`, and packages the result in a `ResponseEntity` with an HTTP status code (e.g. `201 Created` or `200 OK`).
+
+---
+
+### Layer 2: The Service Layer (Business Logic)
+
+**Location:** [CourseService.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/service/CourseService.java)
+
+The Service layer contains the core rules of your system:
+
+```java
+@Service                     // Tells Spring to manage this as a service bean
+@Transactional               // Runs every method inside a database transaction
+public class CourseService {
+
+    private final CourseRepository courseRepository;
+    private final StudentRepository studentRepository;
+
+    public CourseService(CourseRepository courseRepository, StudentRepository studentRepository) {
+        this.courseRepository = courseRepository;
+        this.studentRepository = studentRepository;
+    }
+
+    public Course update(Long id, UpdateCourseRequest req) {
+        Course course = findOne(id); // Throws 404 if not found
+
+        // BUSINESS RULE: Cannot reduce capacity below current enrollment!
+        if (req.getSeatLimit() != null) {
+            long currentEnrollment = studentRepository.countByCourseId(id);
+            if (req.getSeatLimit() < currentEnrollment) {
+                throw new ConflictException(
+                    "Cannot reduce seat limit to " + req.getSeatLimit() + 
+                    ". " + currentEnrollment + " student(s) currently enrolled."
+                );
+            }
+            course.setSeatLimit(req.getSeatLimit());
+        }
+
+        return courseRepository.save(course);
+    }
+}
+```
+
+If a business rule fails, the service throws an exception (like `ConflictException`), which our global error handler catches and translates into an HTTP error.
+
+---
+
+### Layer 3: The Repository Layer (Database Access)
+
+**Location:** [CourseRepository.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/repository/CourseRepository.java)
+
+With Spring Data JPA, you don't even have to write a class implementation! You simply declare an **interface**:
+
+```java
+@Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
+
+    // Spring Data JPA automatically provides:
+    // - findById(id)
+    // - findAll()
+    // - save(entity)
+    // - deleteById(id)
+    // - count()
+
+    // Custom search query using JPQL (Java Persistence Query Language):
     @Query("SELECT c FROM Course c WHERE LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(c.instructor) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Course> searchCourses(@Param("search") String search, Pageable pageable);
 }
 ```
 
-### StudentRepository
-```java
-public interface StudentRepository extends JpaRepository<Student, Long> {
-    @Query("SELECT COUNT(s) FROM Student s WHERE s.course.id = :courseId")
-    long countByCourseId(@Param("courseId") Long courseId);
+By extending `JpaRepository<Course, Long>`, Spring generates the underlying SQL queries at runtime.
 
-    boolean existsByEmail(String email);
-    boolean existsByEmailAndIdNot(String email, Long id);
+---
 
-    @Query("SELECT s FROM Student s WHERE LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(s.email) LIKE LOWER(CONCAT('%', :search, '%'))")
-    Page<Student> searchStudents(@Param("search") String search, Pageable pageable);
+### Data Models: Entities vs DTOs
 
-    @Query("SELECT s FROM Student s WHERE s.course.id = :courseId")
-    Page<Student> findByCourseId(@Param("courseId") Long courseId, Pageable pageable);
-}
+In this project, you will notice two types of model classes:
+
+#### 1. Entities (`com.courseenrollment.*.entity.*`)
+An Entity represents an actual table in the database.
+- Example: [Course.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/entity/Course.java)
+- Uses `@Entity` and `@Table(name = "courses")`.
+- Maps fields directly to database columns (`seatLimit`, `name`, `createdAt`).
+
+#### 2. DTOs (Data Transfer Objects) (`com.courseenrollment.*.dto.*`)
+A DTO represents the exact JSON shape sent in or received by the API.
+- Example: [CreateCourseRequest.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/dto/CreateCourseRequest.java)
+- Contains validation annotations (`@NotBlank`, `@Min(1)`).
+- Why separate them? Never expose internal database structures directly to the client. DTOs ensure only valid, expected fields are accepted from the outside world.
+
+---
+
+## 5. The Life of an HTTP Request (Step-by-Step Walkthrough)
+
+To understand how all these pieces fit together, let's trace what happens when an administrator enrolls a student:
+
+### Tracing `POST /students` (Enrolling a Student)
+
+```
+[Client] sends:
+POST /students
+Headers: { Authorization: "Bearer eyJhbGciOi..." }
+Body: { "name": "Alice Smith", "email": "alice@campus.com", "courseId": 1 }
 ```
 
----
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Filter as JwtAuthFilter
+    participant Controller as StudentController
+    participant Service as StudentService
+    participant Repo as StudentRepository
+    participant DB as SQLite Database
 
-## 8. Business Logic & Service Layer
-
-### AuthService: Registration, Login & Role Switching
-1. **`register(RegisterRequest req)`**:
-   - Verifies email is not already taken; throws `ConflictException` (409) if duplicate.
-   - Assigns role (defaults to `ADMIN` so users creating new accounts have administrative capabilities immediately).
-   - Hashes password using BCrypt.
-   - Persists user and returns `AuthResponse` containing `UserDto` and signed JWT.
-
-2. **`login(LoginRequest req)`**:
-   - Queries user by email.
-   - Compares raw password with BCrypt hash using `passwordEncoder.matches()`.
-   - Throws `BadCredentialsException` (401) on failure.
-   - Returns new signed JWT.
-
-3. **`switchRole(String email, String targetRole)`**:
-   - Finds authenticated user by email.
-   - Toggles role between `ADMIN` &harr; `STUDENT` or assigns requested role.
-   - Saves user and generates fresh JWT containing the updated role claim.
-
-### CourseService: CRUD, Search & Seat-Limit Guard
-1. **`create(CreateCourseRequest req)`**:
-   - Sanitizes and validates course name, instructor, and seat limit.
-   - Saves new Course.
-
-2. **`findAll(int page, int limit, String search)`**:
-   - Clamps `limit` between 1 and 50 (prevents denial-of-service via huge page limits).
-   - Computes 0-based page index.
-   - Orders courses by `createdAt DESC`.
-   - Executes case-insensitive search if search string is supplied; else executes standard paginated query.
-   - Returns `PaginatedResponse<Course>` containing `PageMeta(total, page, limit, totalPages)`.
-
-3. **`update(Long id, UpdateCourseRequest req)`**:
-   - Fetches course or throws `ResourceNotFoundException` (404).
-   - **Capacity Guard**: If `seatLimit` is being lowered, counts currently enrolled students via `studentRepository.countByCourseId(id)`. If `newSeatLimit < currentEnrollment`, aborts and throws `ConflictException` (409):
-     `"Cannot reduce seat limit to X. Y student(s) currently enrolled."`
-   - Applies partial updates to name and instructor.
-
-4. **`remove(Long id)`**:
-   - Fetches course or throws 404.
-   - Cascades deletion to child student records, flushing changes to SQLite.
-
-5. **`findStudentsByCourseId(Long courseId, int page, int limit)`**:
-   - Validates existence of course.
-   - Returns paginated list of students enrolled in that specific course.
-
-### StudentService: Enrollment, Transfer & Capacity Validation
-1. **`create(CreateStudentRequest req)`**:
-   - Looks up target course by `courseId`; throws 404 if missing.
-   - **Seat Limit Check**: Queries current student count in course. If `count >= course.getSeatLimit()`, throws `ConflictException` (409):
-     `"Course is full. Cannot enroll more students."`
-   - **Email Uniqueness**: Verifies student email is not already taken across the entire system; throws 409 if duplicate.
-   - Defaults enrollment date to `LocalDate.now()` if empty.
-   - Saves and returns new `Student`.
-
-2. **`update(Long id, UpdateStudentRequest req)`**:
-   - Fetches student or throws 404.
-   - **Email Check**: If email changed, verifies `existsByEmailAndIdNot(newEmail, id)` to prevent taking another student's email.
-   - **Course Transfer Guard**: If `courseId` changed:
-     - Looks up new course.
-     - Checks target course enrollment. If `currentEnrollment >= targetCourse.getSeatLimit()`, throws 409:
-       `"Target course is full. Cannot transfer student."`
-     - Transfers student to new course.
-   - Saves updated student.
-
-3. **`remove(Long id)`**:
-   - Fetches student.
-   - Unlinks student from parent `course.getStudents()` list to avoid JPA cache detachment conflicts.
-   - Deletes student entity and flushes persistence context.
-
----
-
-## 9. Controller Layer & REST API Endpoints
-
-### Authentication Endpoints (`/auth`)
-
-| Method | Endpoint | Access | Summary |
-|---|---|---|---|
-| `POST` | `/auth/register` | Public | Register user, returns user object and JWT token |
-| `POST` | `/auth/login` | Public | Authenticate credentials, returns user and JWT token |
-| `POST` | `/auth/switch-role` | Authenticated | Switch active role between admin and student |
-
-### Course Endpoints (`/courses`)
-
-| Method | Endpoint | Access | Summary |
-|---|---|---|---|
-| `GET` | `/courses` | Public | List courses with pagination (`?page=1&limit=10&search=...`) |
-| `GET` | `/courses/{id}` | Public | Retrieve single course details |
-| `GET` | `/courses/{id}/students` | Public | List students enrolled in course (paginated) |
-| `POST` | `/courses` | Admin | Create a new course |
-| `PATCH` | `/courses/{id}` | Admin | Update course name, instructor, or seat limit |
-| `DELETE` | `/courses/{id}` | Admin | Delete course and cascade unenroll students |
-
-### Student Endpoints (`/students`)
-
-| Method | Endpoint | Access | Summary |
-|---|---|---|---|
-| `GET` | `/students` | Public | List all students with pagination (`?page=1&limit=10&search=...`) |
-| `GET` | `/students/{id}` | Public | Retrieve single student details |
-| `POST` | `/students` | Admin | Enroll student into a course (enforces seat capacity) |
-| `PATCH` | `/students/{id}` | Admin | Update student info or transfer to another course |
-| `DELETE` | `/students/{id}` | Admin | Unenroll student from system |
-
----
-
-## 10. DTOs, Validation & Serialization
-
-All incoming payloads are strictly validated before hitting services.
-
-### Validation Rules Matrix
-
-| DTO | Field | Annotations / Rules | Error Message |
-|---|---|---|---|
-| `CreateCourseRequest` | `name` | `@NotBlank`, `@Size(max = 255)` | `"name should not be empty"` |
-| | `instructor` | `@NotBlank`, `@Size(max = 255)` | `"instructor should not be empty"` |
-| | `seatLimit` | `@NotNull`, `@Min(1)` | `"seatLimit must not be less than 1"` |
-| `CreateStudentRequest` | `name` | `@NotBlank`, `@Size(max = 255)` | `"name should not be empty"` |
-| | `email` | `@NotBlank`, `@Email` | `"email must be an email"` |
-| | `courseId` | `@NotNull` | `"courseId should not be empty"` |
-| `RegisterRequest` | `name` | `@NotBlank`, `@Size(max = 255)` | `"name should not be empty"` |
-| | `email` | `@NotBlank`, `@Email` | `"email must be an email"` |
-| | `password` | `@NotBlank`, `@Size(min = 6)` | `"password must be longer than or equal to 6 characters"` |
-| `LoginRequest` | `email` | `@NotBlank`, `@Email` | `"email must be an email"` |
-| | `password` | `@NotBlank` | `"password should not be empty"` |
-
----
-
-## 11. Error Handling & Global Exception Handler
-
-Spring Boot uses `@RestControllerAdvice` in `GlobalExceptionHandler` to translate all exceptions into a consistent schema:
-
-```json
-{
-  "statusCode": 409,
-  "message": "Course is full. Cannot enroll more students.",
-  "error": "Conflict"
-}
+    Client->>Filter: POST /students + Bearer Token
+    Note over Filter: Validates token signature & extracts role ('ADMIN')
+    Filter->>Controller: Forward authenticated request
+    Note over Controller: Validates DTO (@NotBlank, @Email)
+    Controller->>Service: studentService.create(req)
+    Note over Service: 1. Checks if course #1 exists<br/>2. Checks: currentEnrollment < seatLimit<br/>3. Checks: email not duplicate
+    Service->>Repo: studentRepository.save(student)
+    Repo->>DB: INSERT INTO students (...) VALUES (...)
+    DB-->>Repo: Saved row ID = 42
+    Repo-->>Service: Return persisted Student
+    Service-->>Controller: Return Student object
+    Controller-->>Client: HTTP 201 Created + JSON payload
 ```
 
-### Exception Mapping Table
+#### Step 1: The Security Filter (`JwtAuthFilter`)
+The request arrives. Before reaching any controller, it passes through [JwtAuthFilter.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/config/JwtAuthFilter.java).
+- It reads the `Authorization: Bearer <token>` header.
+- It validates the cryptographic signature.
+- It extracts the user's role (`ROLE_ADMIN`) and stores it in the `SecurityContext`.
 
-| Exception Class | HTTP Status | Response `error` | Description |
-|---|---|---|---|
-| `ResourceNotFoundException` | **404 Not Found** | `"Not Found"` | Course or Student ID does not exist |
-| `ConflictException` | **409 Conflict** | `"Conflict"` | Course full, duplicate email, capacity reduction conflict |
-| `BadRequestException` | **400 Bad Request** | `"Bad Request"` | Invalid client request parameters |
-| `MethodArgumentNotValidException` | **400 Bad Request** | `"Bad Request"` | Jakarta validation failure; `message` contains array of field errors |
-| `HttpMessageNotReadableException` | **400 Bad Request** | `"Bad Request"` | Malformed JSON in request body |
-| `MethodArgumentTypeMismatchException` | **400 Bad Request** | `"Bad Request"` | E.g. passing `"abc"` for numeric `{id}` parameter |
-| `AuthenticationException` / `BadCredentialsException` | **401 Unauthorized** | `"Unauthorized"` | Invalid password, missing/expired JWT token |
-| `AccessDeniedException` | **403 Forbidden** | `"Forbidden"` | Non-admin user attempting mutation endpoint (`"Admin access required"`) |
-| `Exception` (catch-all) | **500 Server Error** | `"Internal Server Error"`| Unexpected runtime failure |
+#### Step 2: The Controller (`StudentController`)
+The request hits `create(@Valid @RequestBody CreateStudentRequest req)`:
+- Jackson parses the JSON body into a `CreateStudentRequest` object.
+- Jakarta Validation checks:
+  - Is `name` not blank?
+  - Is `email` a valid email format?
+  - Is `courseId` provided?
+  - If any check fails, it immediately returns `400 Bad Request` with error details.
+
+#### Step 3: The Service (`StudentService`)
+The controller calls `studentService.create(req)` in [StudentService.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/student/service/StudentService.java):
+- **Course check:** Does Course #1 exist? If not, throws `ResourceNotFoundException` (`404`).
+- **Capacity check:** Counts enrolled students using `studentRepository.countByCourseId(1)`.
+  - If `count >= course.getSeatLimit()`, throws `ConflictException("Course is full. Cannot enroll more students.")` (`409`).
+- **Duplicate email check:** Has this email been enrolled before? If yes, throws `ConflictException` (`409`).
+
+#### Step 4: The Repository & Database
+If all checks pass:
+- A new `Student` entity is created.
+- `studentRepository.save(student)` is called.
+- Hibernate automatically creates an `INSERT INTO students ...` SQL statement and executes it against SQLite.
+
+#### Step 5: The Response
+The controller wraps the new student in `ResponseEntity.status(HttpStatus.CREATED).body(student)`.
+- Jackson serializes the `Student` object to JSON.
+- The client receives `HTTP 201 Created` with the newly created student data.
 
 ---
 
-## 12. Seat-Limit Invariant & Concurrency Protections
+## 6. Spring Boot Annotations Cheat Sheet
 
-Ensuring that a course never exceeds its assigned seat limit is a fundamental requirement. The application defends this invariant at three distinct operational points:
+Spring Boot uses annotations (the `@` symbols) to configure behavior without writing boilerplate code. Here is every key annotation used in this project:
 
-### 1. Enrollment (`StudentService.create`)
-```java
-long currentEnrollment = studentRepository.countByCourseId(req.getCourseId());
-if (currentEnrollment >= course.getSeatLimit()) {
-    throw new ConflictException("Course is full. Cannot enroll more students.");
-}
+### 1. Spring Framework & Component Scanning
+| Annotation | Where It's Used | What It Does |
+|---|---|---|
+| `@SpringBootApplication` | [CourseEnrollmentApplication.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/CourseEnrollmentApplication.java) | Marks the main class. Enables auto-configuration and component scanning. |
+| `@Configuration` | `SecurityConfig`, `WebMvcConfig` | Defines a class that provides Spring bean definitions. |
+| `@Bean` | Inside `@Configuration` classes | Tells Spring: "The object returned by this method should be managed as a Spring Bean." |
+| `@Component` | `JwtAuthFilter`, `DataInitializer` | Generic annotation marking any class as a Spring-managed Bean. |
+
+### 2. Web & REST Controllers
+| Annotation | Where It's Used | What It Does |
+|---|---|---|
+| `@RestController` | Controllers | Combines `@Controller` and `@ResponseBody`. All method return values are automatically serialized as JSON. |
+| `@RequestMapping("/path")` | Controllers | Sets the base URL path for the controller. |
+| `@GetMapping`, `@PostMapping`, `@PatchMapping`, `@DeleteMapping` | Controller methods | Maps HTTP GET, POST, PATCH, and DELETE requests to specific Java methods. |
+| `@RequestBody` | Controller method arguments | Deserializes the incoming HTTP JSON body into a Java DTO object. |
+| `@PathVariable` | Controller method arguments | Extracts variables from the URL path (e.g. `/courses/{id}` &rarr; `@PathVariable Long id`). |
+| `@RequestParam` | Controller method arguments | Extracts query string parameters (e.g. `?page=1&limit=10` &rarr; `@RequestParam int page`). |
+| `@RestControllerAdvice` | [GlobalExceptionHandler.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/common/exception/GlobalExceptionHandler.java) | Intercepts exceptions thrown by any controller and formats a standard JSON response. |
+
+### 3. Business Logic & Data Access
+| Annotation | Where It's Used | What It Does |
+|---|---|---|
+| `@Service` | Services | Marks the class as a business logic service bean. |
+| `@Repository` | Repositories | Marks the interface as a data access bean. |
+| `@Transactional` | Services | Wraps the method in a database transaction. If an exception is thrown, changes are rolled back automatically. |
+| `@Query` | Repositories | Allows writing custom JPQL or native SQL queries. |
+
+### 4. JPA & Database Entities
+| Annotation | Where It's Used | What It Does |
+|---|---|---|
+| `@Entity` | `Course`, `Student`, `User` | Marks the class as a persistent database entity mapped to a table. |
+| `@Table(name = "...")` | Entities | Specifies the database table name. |
+| `@Id` | Entity primary keys | Marks the field as the primary key. |
+| `@GeneratedValue` | Entity primary keys | Tells SQLite to auto-increment the ID (`AUTOINCREMENT`). |
+| `@ManyToOne` / `@OneToMany` | Entities | Defines relational links between entities (e.g., Many Students belong to One Course). |
+| `@PrePersist` / `@PreUpdate` | Entities | Callback methods run right before saving or updating to set timestamps. |
+
+### 5. Input Validation
+| Annotation | Where It's Used | What It Does |
+|---|---|---|
+| `@Valid` | Controller method arguments | Tells Spring to execute validation annotations on the incoming DTO. |
+| `@NotBlank` | DTO fields | Ensures string is not null and contains at least one non-whitespace character. |
+| `@NotNull` | DTO fields | Ensures value is not null. |
+| `@Min(value)` | DTO fields | Ensures numeric value is &ge; the minimum. |
+| `@Email` | DTO fields | Ensures string is formatted as a valid email address. |
+
+---
+
+## 7. Security & Authentication Explained
+
+### The Filter Chain Analogy
+Think of Spring Security like security checkpoints at an airport:
+
+```
+[ Incoming Request ]
+         │
+         ▼
+ ┌──────────────────────┐
+ │  Checkpoint 1 (CORS) │ ── "Is this request coming from an allowed domain (e.g. localhost:5173)?"
+ └──────────┬───────────┘
+            ▼
+ ┌──────────────────────┐
+ │ Checkpoint 2 (JWT)   │ ── "Does the request have a valid Bearer token signed by us?"
+ └──────────┬───────────┘
+            ▼
+ ┌──────────────────────┐
+ │ Checkpoint 3 (RBAC)  │ ── "Does this user have the required role (e.g. ROLE_ADMIN)?"
+ └──────────┬───────────┘
+            ▼
+ [ Controller Method Runs ]
 ```
 
-### 2. Capacity Reduction (`CourseService.update`)
+### What is a JWT (JSON Web Token)?
+Instead of storing user sessions in server memory, our app is **stateless**. When you log in (`POST /auth/login`), the server generates a signed string called a **JWT**:
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBjYW1wdXMuY29tIiwicm9sZSI6ImFkbWluIn0.abcdef...
+```
+
+This token has three parts separated by dots:
+1. **Header:** Algorithm used (`HMAC-SHA256`).
+2. **Payload:** Data stored inside the token (`userId`, `email`, `role`).
+3. **Signature:** Cryptographic signature created using the server's private secret in `application.yml`. If anyone tampers with the payload, the signature becomes invalid!
+
+On subsequent requests, the frontend sends this token in the header:
+```http
+Authorization: Bearer <token>
+```
+The server checks the signature without needing to look up the session in a database.
+
+---
+
+### Role-Based Access Control (`ADMIN`, `INSTRUCTOR`, `STUDENT`)
+In [SecurityConfig.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/config/SecurityConfig.java) and Controller annotations (`@PreAuthorize`), endpoints are protected according to the 3 roles:
+- **Public endpoints (anyone can access):**
+  - `POST /auth/**` (Registration, login)
+  - `GET /courses` (Browse approved courses; unauthenticated visitors only see `APPROVED` courses)
+  - `GET /courses/{id}` (View course details)
+  - `/docs/**` (Swagger UI documentation)
+- **Student endpoints:**
+  - `POST /courses/{id}/enroll` or `POST /students` (Self-enroll in an approved course)
+  - `GET /courses/my-courses` (View courses the student is enrolled in)
+- **Instructor endpoints:**
+  - `POST /courses` (Create course — automatically placed in `PENDING` status)
+  - `PATCH /courses/{id}` (Edit their own courses)
+  - `GET /courses/my-courses` (View their submitted courses and their statuses)
+- **Admin-only endpoints:**
+  - `PATCH /courses/{id}/approve` (Approve a pending course)
+  - `PATCH /courses/{id}/reject` (Reject a course)
+  - `PATCH /courses/{id}/status` (Direct status override)
+  - `DELETE /courses/{id}` (Delete any course)
+  - `DELETE /students/{id}` (Unenroll/remove any student)
+
+If an unauthorized user attempts an operation (e.g. a student trying to approve a course), Spring Security automatically throws `403 Forbidden`.
+
+---
+
+## 8. Database & JPA (No SQL Required!)
+
+### What is an ORM (Hibernate)?
+**ORM** stands for *Object-Relational Mapping*.
+In Java, we think in **Objects** (`new Course()`). In SQLite, data is stored in **Tables & Rows**.
+Hibernate sits in the middle: it automatically converts Java objects into SQL table rows, and converts SQL table rows back into Java objects.
+
+Look at [Course.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/course/entity/Course.java):
 ```java
-if (req.getSeatLimit() != null) {
-    long currentEnrollment = studentRepository.countByCourseId(id);
-    if (req.getSeatLimit() < currentEnrollment) {
-        throw new ConflictException(
-            "Cannot reduce seat limit to " + req.getSeatLimit() + ". " + currentEnrollment + " student(s) currently enrolled."
-        );
+@Entity
+@Table(name = "courses")
+public class Course {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL)
+    private List<Student> students = new ArrayList<>();
+}
+```
+Hibernate reads these annotations and automatically creates the table schema in SQLite.
+
+---
+
+### Spring Data JPA Magic
+In [StudentRepository.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/student/repository/StudentRepository.java), notice methods like:
+```java
+boolean existsByEmail(String email);
+```
+You don't write any SQL or method body for this! Spring Data JPA parses the method name:
+- `existsBy` &rarr; `SELECT COUNT(*) > 0 FROM students WHERE ...`
+- `Email` &rarr; `email = ?`
+
+It generates the SQL query automatically.
+
+---
+
+### Why SQLite with HikariCP?
+In [application.yml](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/resources/application.yml):
+```yaml
+hikari:
+  maximum-pool-size: 1
+```
+SQLite is a lightweight, single-file database. If multiple threads write to an SQLite file at the exact same millisecond, SQLite can throw a `database is locked` error. By constraining the HikariCP connection pool to `1`, all database writes are cleanly serialized in order, guaranteeing total safety without needing a heavy external database like PostgreSQL.
+
+---
+
+## 9. Error Handling: The Safety Net
+
+In a production REST API, you never want your server to crash or return messy HTML stack traces when an error occurs.
+
+Look at [GlobalExceptionHandler.java](file:///Users/manjesh/Desktop/Course/course-enrollment/src/main/java/com/courseenrollment/common/exception/GlobalExceptionHandler.java):
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiErrorResponse(404, ex.getMessage(), "Not Found"));
     }
-    course.setSeatLimit(req.getSeatLimit());
-}
-```
 
-### 3. Student Transfer (`StudentService.update`)
-```java
-if (req.getCourseId() != null && !req.getCourseId().equals(student.getCourse().getId())) {
-    Course newCourse = courseRepository.findById(req.getCourseId())
-            .orElseThrow(() -> new ResourceNotFoundException("Course with ID " + req.getCourseId() + " not found"));
-
-    long currentEnrollment = studentRepository.countByCourseId(req.getCourseId());
-    if (currentEnrollment >= newCourse.getSeatLimit()) {
-        throw new ConflictException("Target course is full. Cannot transfer student.");
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(409, ex.getMessage(), "Conflict"));
     }
-    student.setCourse(newCourse);
 }
 ```
 
-### Concurrency Protection Mechanism
-In concurrent environments, multiple simultaneous requests could read `count = 2` on a 3-seat course and both enroll, causing overflow. This is mitigated through:
-1. **Spring Transaction Boundaries (`@Transactional`)**: Each enrollment executes within an ACID transaction.
-2. **SQLite Serialized Locking**: By configuring HikariCP connection pool to `maximum-pool-size: 1`, SQLite executes database write transactions sequentially, eliminating race conditions at the database level.
+Whenever any Service throws `throw new ResourceNotFoundException("Course not found")`:
+1. Spring catches the exception.
+2. The `@ExceptionHandler` method converts it into a clean JSON response:
+   ```json
+   {
+     "statusCode": 404,
+     "message": "Course not found",
+     "error": "Not Found"
+   }
+   ```
+3. The client receives a proper HTTP 404 status.
 
 ---
 
-## 13. Testing Strategy
+## 10. How to Run, Test, and Explore the Project
 
-### Unit Tests (JUnit 5 + Mockito)
-All core service layers are tested in isolation with 100% Mockito mocking:
-- **`AuthServiceTest`** (5 tests):
-  - Successful registration + token generation.
-  - ConflictException on duplicate email registration.
-  - Successful login with BCrypt password verification.
-  - BadCredentialsException on unknown email.
-  - BadCredentialsException on invalid password.
-- **`CourseServiceTest`** (9 tests):
-  - Course creation.
-  - Paginated course listing with metadata.
-  - Case-insensitive search query dispatching.
-  - Course lookup by ID (success & 404).
-  - Updating course properties.
-  - Seat-limit conflict rejection when reducing capacity below active enrollment count.
-  - Course deletion.
-  - Paginated student listing by course ID.
-- **`StudentServiceTest`** (11 tests):
-  - Enrollment when seats are available.
-  - 404 rejection when enrolling in non-existent course.
-  - 409 rejection when enrolling in full course.
-  - 409 rejection on duplicate student email.
-  - Paginated student retrieval.
-  - Student lookup by ID (success & 404).
-  - Updating student details.
-  - Successful course transfer when target course has capacity.
-  - 409 rejection when transferring to full course.
-  - Student unenrollment / deletion.
+### 1. Running the Spring Boot Backend
 
-**Execution:**
+**Option A: Using Maven (if Java 21 is installed locally)**
+```bash
+./mvnw spring-boot:run
+```
+You will see Spring Boot ASCII banner and startup logs. Once you see:
+```text
+Started CourseEnrollmentApplication in X.XXX seconds
+```
+Your backend is running on `http://localhost:3000`!
+
+**Option B: Using Docker (no Java installation needed on your host machine)**
+```bash
+# Build the Docker container image
+docker build -t course-enrollment .
+
+# Run the container on port 3000
+docker run -p 3000:3000 course-enrollment
+```
+
+### 2. Exploring the Interactive API Documentation (Swagger)
+Open your web browser and navigate to:
+```
+http://localhost:3000/docs
+```
+You will see **Swagger UI**:
+- You can view all endpoints (`/auth`, `/courses`, `/students`).
+- You can click **"Try it out"** to test any API directly in your browser.
+- You can log in using any of the default pre-seeded demo credentials:
+  - **Administrator:** `admin@campus.com` / `admin123` (`ADMIN` role)
+  - **Instructor:** `instructor@campus.com` / `instructor123` (`INSTRUCTOR` role)
+  - **Student:** `student@campus.com` / `student123` (`STUDENT` role)
+- Copy the JWT token from the login response and click the green **Authorize** button at the top of Swagger to test protected endpoints.
+
+### 3. Running Automated Tests
+The project includes unit tests for all services:
 ```bash
 ./mvnw test
 ```
-
-### End-to-End Tests (Bash + cURL Integration Suite)
-Automated in `test-e2e.sh`, validating all 35 operational scenarios against a live Spring Boot server instance:
-- Auth registration, token validation, duplicate email 409, invalid credentials 401, validation 400.
-- Course creation, RBAC authorization rejection (401 without Bearer token), search, pagination, update, 404 lookup.
-- Student enrollment, seat limit full rejection (409), invalid course (404), list students, search students, course-specific student listing.
-- Student deletion, seat vacancy recovery (verifying another student can enroll once a seat is freed).
-- CORS headers verification (`Access-Control-Allow-Origin`).
-- Course cascade deletion.
-
-**Execution:**
+To run the full 35-scenario end-to-end integration test suite:
 ```bash
 bash test-e2e.sh
 ```
 
----
-
-## 14. Build, Deployment & Dockerization
-
-### Local Build & Execution
+### 4. Running the Frontend
+In a separate terminal:
 ```bash
-# Compile and package executable JAR
-./mvnw clean package -DskipTests
-
-# Run the backend (defaults to port 3000)
-java -jar target/course-enrollment-0.0.1-SNAPSHOT.jar
-
-# Or run directly with Spring Boot plugin
-./mvnw spring-boot:run
+cd frontend
+npm install
+npm run dev
 ```
-
-### Multi-Stage Dockerfile
-Optimized multi-stage build leveraging Eclipse Temurin 21:
-
-```dockerfile
-# Stage 1: Build JAR using Maven
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
-WORKDIR /app
-COPY pom.xml .
-COPY .mvn/ .mvn/
-COPY mvnw* .
-RUN mvn dependency:go-offline -B
-COPY src/ src/
-RUN mvn clean package -DskipTests
-
-# Stage 2: Minimal Production JRE Runtime
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-COPY --from=builder /app/target/course-enrollment-*.jar app.jar
-ENV PORT=3000
-EXPOSE 3000
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
+Open `http://localhost:5173` to interact with the full web UI connected to your Spring Boot backend.
 
 ---
 
-## 15. Directory Layout
+## Summary: Key Takeaways for a Beginner
 
-```
-course-enrollment/
-├── pom.xml                                      # Maven dependencies & build configuration
-├── mvnw / mvnw.cmd                              # Maven wrapper scripts
-├── .mvn/wrapper/maven-wrapper.properties       # Maven wrapper distribution settings
-├── Dockerfile                                   # Multi-stage production container definition
-├── README.md                                    # Project quickstart & overview
-├── test-e2e.sh                                  # 35-step end-to-end integration test suite
-├── database.sqlite                              # SQLite database file (created on first run)
-├── src/
-│   ├── main/
-│   │   ├── java/com/courseenrollment/
-│   │   │   ├── CourseEnrollmentApplication.java # Spring Boot entry point (@SpringBootApplication)
-│   │   │   │
-│   │   │   ├── auth/                            # Authentication & RBAC Module
-│   │   │   │   ├── controller/AuthController.java
-│   │   │   │   ├── dto/AuthResponse.java
-│   │   │   │   ├── dto/LoginRequest.java
-│   │   │   │   ├── dto/RegisterRequest.java
-│   │   │   │   ├── dto/UserDto.java
-│   │   │   │   ├── entity/User.java
-│   │   │   │   ├── enums/UserRole.java
-│   │   │   │   ├── repository/UserRepository.java
-│   │   │   │   └── service/AuthService.java
-│   │   │   │
-│   │   │   ├── course/                          # Course Management Module
-│   │   │   │   ├── controller/CourseController.java
-│   │   │   │   ├── dto/CreateCourseRequest.java
-│   │   │   │   ├── dto/UpdateCourseRequest.java
-│   │   │   │   ├── entity/Course.java
-│   │   │   │   ├── repository/CourseRepository.java
-│   │   │   │   └── service/CourseService.java
-│   │   │   │
-│   │   │   ├── student/                         # Student & Enrollment Module
-│   │   │   │   ├── controller/StudentController.java
-│   │   │   │   ├── dto/CreateStudentRequest.java
-│   │   │   │   ├── dto/UpdateStudentRequest.java
-│   │   │   │   ├── entity/Student.java
-│   │   │   │   ├── repository/StudentRepository.java
-│   │   │   │   └── service/StudentService.java
-│   │   │   │
-│   │   │   ├── common/                          # Shared Models & Exceptions
-│   │   │   │   ├── dto/ApiErrorResponse.java
-│   │   │   │   ├── dto/PageMeta.java
-│   │   │   │   ├── dto/PaginatedResponse.java
-│   │   │   │   └── exception/
-│   │   │   │       ├── BadRequestException.java
-│   │   │   │       ├── ConflictException.java
-│   │   │   │       ├── GlobalExceptionHandler.java
-│   │   │   │       └── ResourceNotFoundException.java
-│   │   │   │
-│   │   │   └── config/                          # Infrastructure & Security Config
-│   │   │       ├── DataInitializer.java         # Seed admin account (admin@campus.com)
-│   │   │       ├── JwtAuthFilter.java           # Stateless JWT Bearer request filter
-│   │   │       ├── JwtService.java              # HMAC-SHA256 token signer & parser
-│   │   │       ├── OpenApiConfig.java           # Swagger 3.0 / BearerAuth OpenAPI setup
-│   │   │       ├── SecurityConfig.java          # Spring Security 6 filter chain
-│   │   │       └── WebMvcConfig.java            # Spring MVC CORS mappings
-│   │   │
-│   │   └── resources/
-│   │       └── application.yml                  # Database, JPA, JWT & Server configurations
-│   │
-│   └── test/java/com/courseenrollment/          # Unit & Mockito Tests
-│       ├── auth/AuthServiceTest.java            # 5 Auth unit tests
-│       ├── course/CourseServiceTest.java        # 9 Course unit tests
-│       └── student/StudentServiceTest.java      # 11 Student unit tests
-└── frontend/                                    # React 19 Client SPA
+1. **Spring Boot is an orchestrator:** It starts your server, creates objects (Beans), and passes them to whoever needs them (Dependency Injection).
+2. **Follow the 3 layers:**
+   - Put routing, HTTP parameters, and validation in **Controllers**.
+   - Put calculations, checks, and seat-capacity logic in **Services**.
+   - Put database queries in **Repositories**.
+3. **Annotations do the heavy lifting:** Rather than writing 50 lines of boilerplate, a single `@RestController`, `@Transactional`, or `@Valid` tells Spring exactly what to do.
+4. **Everything is type-safe and validated:** DTOs and Jakarta annotations catch bad data before it touches your database.
