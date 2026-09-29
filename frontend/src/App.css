@@ -346,6 +346,63 @@ tbody tr:last-child td { border-bottom: none; }
 .badge-success { background: var(--success-light); color: var(--success-text); }
 .badge-warning { background: var(--warning-light); color: var(--warning-text); }
 .badge-danger { background: var(--danger-light); color: #991b1b; }
+.badge-info { background: #ede9fe; color: #5b21b6; }
+.badge-secondary { background: #f1f5f9; color: #475569; }
+.badge-primary { background: #eff6ff; color: #1d4ed8; }
+
+.btn-success-icon {
+  color: var(--success);
+}
+.btn-success-icon:hover {
+  background: var(--success-light);
+  color: var(--success-text);
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.tab-badge {
+  padding: 2px 7px;
+  font-size: 11px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: var(--text-secondary);
+}
+
+.tab-btn.active .tab-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+}
 
 /* ============================================
    Pagination

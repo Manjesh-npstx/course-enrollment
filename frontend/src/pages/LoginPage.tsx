@@ -69,28 +69,84 @@ export function LoginPage({ onToggle }: LoginPageProps) {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <button
-            type="button"
-            className="btn btn-secondary auth-btn"
-            style={{ marginTop: '10px' }}
-            disabled={loading}
-            onClick={async () => {
-              setEmail('admin@campus.com');
-              setPassword('admin123');
-              setError('');
-              setLoading(true);
-              try {
-                await login('admin@campus.com', 'admin123');
-              } catch (err: any) {
-                const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
-                setError(msg || 'Admin login failed');
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            ⚡ Quick Sign In as Admin
-          </button>
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Quick Demo Logins
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary auth-btn"
+                style={{ fontSize: '12px', padding: '6px 12px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                disabled={loading}
+                onClick={async () => {
+                  setEmail('admin@campus.com');
+                  setPassword('admin123');
+                  setError('');
+                  setLoading(true);
+                  try {
+                    await login('admin@campus.com', 'admin123');
+                  } catch (err: any) {
+                    const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+                    setError(msg || 'Admin login failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <span>⚡ Admin</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>admin@campus.com</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary auth-btn"
+                style={{ fontSize: '12px', padding: '6px 12px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                disabled={loading}
+                onClick={async () => {
+                  setEmail('instructor@campus.com');
+                  setPassword('instructor123');
+                  setError('');
+                  setLoading(true);
+                  try {
+                    await login('instructor@campus.com', 'instructor123');
+                  } catch (err: any) {
+                    const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+                    setError(msg || 'Instructor login failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <span>🎓 Instructor</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>instructor@campus.com</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary auth-btn"
+                style={{ fontSize: '12px', padding: '6px 12px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                disabled={loading}
+                onClick={async () => {
+                  setEmail('student@campus.com');
+                  setPassword('student123');
+                  setError('');
+                  setLoading(true);
+                  try {
+                    await login('student@campus.com', 'student123');
+                  } catch (err: any) {
+                    const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+                    setError(msg || 'Student login failed');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                <span>👤 Student</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>student@campus.com</span>
+              </button>
+            </div>
+          </div>
         </form>
 
         <p className="auth-toggle">

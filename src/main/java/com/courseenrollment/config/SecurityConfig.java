@@ -70,6 +70,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/courses/my-courses", "/courses/enrolled").authenticated()
                         .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/students/**").permitAll()
                         // Swagger & OpenAPI

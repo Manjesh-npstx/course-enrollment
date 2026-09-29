@@ -10,7 +10,7 @@ export function RegisterPage({ onToggle }: RegisterPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'student'>('admin');
+  const [role, setRole] = useState<'admin' | 'instructor' | 'student'>('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -85,10 +85,11 @@ export function RegisterPage({ onToggle }: RegisterPageProps) {
             <select
               className="input"
               value={role}
-              onChange={(e) => setRole(e.target.value as 'admin' | 'student')}
+              onChange={(e) => setRole(e.target.value as 'admin' | 'instructor' | 'student')}
             >
-              <option value="admin">Admin (Full Access — Create/Edit/Delete Courses & Students)</option>
-              <option value="student">Student (Read-Only access)</option>
+              <option value="student">Student (Browse courses & self-enroll)</option>
+              <option value="instructor">Instructor (Create courses for approval & view enrollments)</option>
+              <option value="admin">Admin (Approve courses, manage enrollments, full access)</option>
             </select>
           </div>
 

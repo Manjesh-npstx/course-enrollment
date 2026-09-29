@@ -61,9 +61,18 @@ public class AuthService {
         User user = userRepository.findByEmail(email.trim())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
-        UserRole newRole = (targetRole != null && !targetRole.trim().isEmpty())
-                ? UserRole.fromValue(targetRole.trim())
-                : (user.getRole() == UserRole.ADMIN ? UserRole.STUDENT : UserRole.ADMIN);
+        UserRole newRole;
+        if (targetRole != null && !targetRole.trim().isEmpty()) {
+            newRole = UserRole.fromValue(targetRole.trim());
+        } else {
+            if (user.getRole() == UserRole.ADMIN) {
+                newRole = UserRole.INSTRUCTOR;
+            } else if (user.getRole() == UserRole.INSTRUCTOR) {
+                newRole = UserRole.STUDENT;
+            } else {
+                newRole = UserRole.ADMIN;
+            }
+        }
 
         user.setRole(newRole);
         User savedUser = userRepository.save(user);

@@ -5,6 +5,7 @@ import com.courseenrollment.common.dto.PaginatedResponse;
 import com.courseenrollment.common.exception.ConflictException;
 import com.courseenrollment.common.exception.ResourceNotFoundException;
 import com.courseenrollment.course.entity.Course;
+import com.courseenrollment.course.enums.CourseStatus;
 import com.courseenrollment.course.repository.CourseRepository;
 import com.courseenrollment.student.dto.CreateStudentRequest;
 import com.courseenrollment.student.dto.UpdateStudentRequest;
@@ -36,6 +37,10 @@ public class StudentService {
         Course course = courseRepository.findById(req.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course with ID " + req.getCourseId() + " not found"));
 
+        if (course.getStatus() != null && course.getStatus() != CourseStatus.APPROVED) {
+            throw new ConflictException("Course is not approved for enrollment.");
+        }
+
         long currentEnrollment = studentRepository.countByCourseId(req.getCourseId());
         if (currentEnrollment >= course.getSeatLimit()) {
             throw new ConflictException("Course is full. Cannot enroll more students.");
@@ -57,6 +62,17 @@ public class StudentService {
         );
 
         return studentRepository.save(student);
+    }
+
+    @Transactional
+    public Student enrollSelf(Long courseId, String userEmail, String userName) {
+        CreateStudentRequest req = new CreateStudentRequest(
+                userName != null && !userName.trim().isEmpty() ? userName.trim() : userEmail,
+                userEmail,
+                LocalDate.now().toString(),
+                courseId
+        );
+        return create(req);
     }
 
     @Transactional(readOnly = true)
@@ -102,6 +118,10 @@ public class StudentService {
             Course newCourse = courseRepository.findById(req.getCourseId())
                     .orElseThrow(() -> new ResourceNotFoundException("Course with ID " + req.getCourseId() + " not found"));
 
+            if (newCourse.getStatus() != null && newCourse.getStatus() != CourseStatus.APPROVED) {
+                throw new ConflictException("Target course is not approved for enrollment.");
+            }
+
             long currentEnrollment = studentRepository.countByCourseId(req.getCourseId());
             if (currentEnrollment >= newCourse.getSeatLimit()) {
                 throw new ConflictException("Target course is full. Cannot transfer student.");
@@ -134,5 +154,10 @@ public class StudentService {
     @Transactional(readOnly = true)
     public List<Student> findByCourseId(Long courseId) {
         return studentRepository.findByCourseId(courseId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Course> findEnrolledCoursesByEmail(String email) {
+        return studentRepository.findEnrolledCoursesByEmail(email);
     }
 }

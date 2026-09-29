@@ -1,20 +1,24 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api, setAuthToken, getAuthToken, setOnAuthError } from '../services/api';
+import type { UserRole } from '../types';
 
-interface AuthUser {
+export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'student';
+  role: UserRole;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   isAdmin: boolean;
+  isInstructor: boolean;
+  isStudent: boolean;
+  canManageCourses: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role?: string) => Promise<void>;
-  switchRole: (role?: 'admin' | 'student') => Promise<void>;
+  switchRole: (role?: UserRole) => Promise<void>;
   logout: () => void;
 }
 
@@ -31,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
-          setUser({ ...parsed, role: parsed.role as AuthUser['role'] });
+          setUser({ ...parsed, role: parsed.role as UserRole });
         } catch {
           setAuthToken(null);
         }
@@ -51,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await api.login(email, password);
     setAuthToken(res.token);
-    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    const userData = { ...res.user, role: res.user.role as UserRole };
     localStorage.setItem('auth_user', JSON.stringify(userData));
     setUser(userData);
   };
@@ -59,15 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (name: string, email: string, password: string, role?: string) => {
     const res = await api.register(name, email, password, role);
     setAuthToken(res.token);
-    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    const userData = { ...res.user, role: res.user.role as UserRole };
     localStorage.setItem('auth_user', JSON.stringify(userData));
     setUser(userData);
   };
 
-  const switchRole = async (targetRole?: 'admin' | 'student') => {
+  const switchRole = async (targetRole?: UserRole) => {
     const res = await api.switchRole(targetRole);
     setAuthToken(res.token);
-    const userData = { ...res.user, role: res.user.role as AuthUser['role'] };
+    const userData = { ...res.user, role: res.user.role as UserRole };
     localStorage.setItem('auth_user', JSON.stringify(userData));
     setUser(userData);
   };
@@ -79,9 +83,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isAdmin = user?.role === 'admin';
+  const isInstructor = user?.role === 'instructor';
+  const isStudent = user?.role === 'student' || (!isAdmin && !isInstructor);
+  const canManageCourses = isAdmin || isInstructor;
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, switchRole, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAdmin,
+      isInstructor,
+      isStudent,
+      canManageCourses,
+      login,
+      register,
+      switchRole,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

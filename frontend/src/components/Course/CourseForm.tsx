@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Course, CreateCourseDto, UpdateCourseDto } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface CourseFormProps {
   course?: Course | null;
@@ -8,6 +9,7 @@ interface CourseFormProps {
 }
 
 export function CourseForm({ course, onSubmit, onClose }: CourseFormProps) {
+  const { user, isInstructor } = useAuth();
   const [name, setName] = useState('');
   const [instructor, setInstructor] = useState('');
   const [seatLimit, setSeatLimit] = useState('');
@@ -19,8 +21,10 @@ export function CourseForm({ course, onSubmit, onClose }: CourseFormProps) {
       setName(course.name);
       setInstructor(course.instructor);
       setSeatLimit(String(course.seatLimit));
+    } else if (isInstructor && user?.name) {
+      setInstructor(user.name);
     }
-  }, [course]);
+  }, [course, isInstructor, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +49,19 @@ export function CourseForm({ course, onSubmit, onClose }: CourseFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="form">
+      {isInstructor && !course && (
+        <div style={{
+          background: '#f5f3ff',
+          border: '1px solid #ddd6fe',
+          color: '#5b21b6',
+          padding: '10px 12px',
+          borderRadius: '6px',
+          fontSize: '0.8rem',
+          marginBottom: '16px'
+        }}>
+          ℹ️ Courses created by instructors will be marked as <strong>PENDING</strong> and become public once approved by an Admin.
+        </div>
+      )}
       {error && <div className="form-error">{error}</div>}
 
       <div className="form-group">

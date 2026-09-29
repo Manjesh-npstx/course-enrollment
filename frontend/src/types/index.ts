@@ -1,8 +1,12 @@
+export type UserRole = 'admin' | 'instructor' | 'student';
+
 export interface Course {
   id: number;
   name: string;
   instructor: string;
   seatLimit: number;
+  status?: 'pending' | 'approved' | 'rejected';
+  instructorEmail?: string;
   students?: Student[];
   createdAt: string;
   updatedAt: string;
@@ -39,6 +43,7 @@ export interface UpdateCourseDto {
   name?: string;
   instructor?: string;
   seatLimit?: number;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface CreateStudentDto {

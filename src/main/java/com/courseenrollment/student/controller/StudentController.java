@@ -26,9 +26,9 @@ public class StudentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT')")
     @SecurityRequirement(name = "BearerAuth")
-    @Operation(summary = "Enroll a student in a course")
+    @Operation(summary = "Enroll a student in a course (Admin or Student self-enrollment)")
     public ResponseEntity<Student> create(@Valid @RequestBody CreateStudentRequest req) {
         Student student = studentService.create(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(student);

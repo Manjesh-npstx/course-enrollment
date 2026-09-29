@@ -18,6 +18,9 @@ public class UpdateCourseRequest {
     @Min(value = 1, message = "seatLimit must not be less than 1")
     private Integer seatLimit;
 
+    @Schema(example = "approved")
+    private String status;
+
     public UpdateCourseRequest() {
     }
 
@@ -25,6 +28,13 @@ public class UpdateCourseRequest {
         this.name = name;
         this.instructor = instructor;
         this.seatLimit = seatLimit;
+    }
+
+    public UpdateCourseRequest(String name, String instructor, Integer seatLimit, String status) {
+        this.name = name;
+        this.instructor = instructor;
+        this.seatLimit = seatLimit;
+        this.status = status;
     }
 
     public String getName() {
@@ -49,5 +59,13 @@ public class UpdateCourseRequest {
 
     public void setSeatLimit(Integer seatLimit) {
         this.seatLimit = seatLimit;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

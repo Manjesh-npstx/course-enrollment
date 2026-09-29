@@ -191,6 +191,21 @@ class StudentServiceTest {
     }
 
     @Test
+    @DisplayName("create should throw ConflictException when course is not approved")
+    void create_courseNotApproved() {
+        Course pendingCourse = new Course("Draft Course", "Jane", 10, com.courseenrollment.course.enums.CourseStatus.PENDING, "jane@test.com");
+        pendingCourse.setId(5L);
+        CreateStudentRequest req = new CreateStudentRequest("Dave", "dave@test.com", null, 5L);
+        when(courseRepository.findById(5L)).thenReturn(Optional.of(pendingCourse));
+
+        assertThatThrownBy(() -> studentService.create(req))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("Course is not approved for enrollment.");
+
+        verify(studentRepository, never()).save(any(Student.class));
+    }
+
+    @Test
     @DisplayName("remove should delete student")
     void remove_success() {
         when(studentRepository.findById(1L)).thenReturn(Optional.of(mockStudent));

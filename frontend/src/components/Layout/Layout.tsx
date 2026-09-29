@@ -2,7 +2,13 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export function Layout() {
-  const { user, isAdmin, switchRole, logout } = useAuth();
+  const { user, isAdmin, isInstructor, isStudent, switchRole, logout } = useAuth();
+
+  const getRoleBadge = () => {
+    if (isAdmin) return <span className="badge badge-warning" style={{ fontSize: '0.65rem', marginLeft: '6px' }}>Admin</span>;
+    if (isInstructor) return <span className="badge badge-info" style={{ fontSize: '0.65rem', marginLeft: '6px' }}>Instructor</span>;
+    return <span className="badge badge-success" style={{ fontSize: '0.65rem', marginLeft: '6px' }}>Student</span>;
+  };
 
   return (
     <div className="app-layout">
@@ -39,9 +45,7 @@ export function Layout() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
               <div>
                 <span className="sidebar-user-name">{user?.name}</span>
-                <span className={`badge ${isAdmin ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', marginLeft: '6px' }}>
-                  {isAdmin ? 'Admin' : 'Student'}
-                </span>
+                {getRoleBadge()}
               </div>
               <button className="btn btn-ghost btn-sm" onClick={logout} title="Sign out">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,18 +55,40 @@ export function Layout() {
                 </svg>
               </button>
             </div>
-            <button
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', marginTop: '8px', width: '100%', padding: '4px 8px' }}
-              onClick={() => switchRole(isAdmin ? 'student' : 'admin')}
-            >
-              {isAdmin ? 'Switch to Student (Read-Only)' : '⚡ Switch to Admin'}
-            </button>
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Switch Role (Demo)</div>
+              <div style={{ display: 'flex', gap: '3px' }}>
+                <button
+                  className={`btn btn-sm ${isAdmin ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '3px 4px', fontSize: '0.7rem' }}
+                  onClick={() => switchRole('admin')}
+                  title="Switch to Admin role"
+                >
+                  Admin
+                </button>
+                <button
+                  className={`btn btn-sm ${isInstructor ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '3px 4px', fontSize: '0.7rem' }}
+                  onClick={() => switchRole('instructor')}
+                  title="Switch to Instructor role"
+                >
+                  Instructor
+                </button>
+                <button
+                  className={`btn btn-sm ${isStudent ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '3px 4px', fontSize: '0.7rem' }}
+                  onClick={() => switchRole('student')}
+                  title="Switch to Student role"
+                >
+                  Student
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
       <main className="main-content">
-        {!isAdmin && (
+        {isStudent && (
           <div style={{
             background: '#eff6ff',
             border: '1px solid #bfdbfe',
@@ -76,15 +102,26 @@ export function Layout() {
             fontSize: '0.875rem'
           }}>
             <span>
-              ℹ️ <strong>Student Mode (Read-Only):</strong> You can browse courses and view enrollments. Switch to Admin mode to add/edit/delete courses and enroll students.
+              ℹ️ <strong>Student Mode:</strong> You can browse approved courses, self-enroll in courses, and view your enrollments in "My Courses".
             </span>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => switchRole('admin')}
-              style={{ marginLeft: '12px', whiteSpace: 'nowrap' }}
-            >
-              ⚡ Switch to Admin
-            </button>
+          </div>
+        )}
+        {isInstructor && (
+          <div style={{
+            background: '#f5f3ff',
+            border: '1px solid #ddd6fe',
+            color: '#5b21b6',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.875rem'
+          }}>
+            <span>
+              🎓 <strong>Instructor Mode:</strong> You can create courses (sent for Admin approval), manage your created courses in "My Courses", and view enrolled students.
+            </span>
           </div>
         )}
         <Outlet />

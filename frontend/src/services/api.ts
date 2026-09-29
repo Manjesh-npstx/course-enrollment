@@ -79,17 +79,22 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ name, email, password, ...(role ? { role } : {}) }) },
     ),
 
-  switchRole: (role?: 'admin' | 'student') =>
+  switchRole: (role?: string) =>
     request<{ user: { id: number; name: string; email: string; role: string }; token: string }>(
       '/auth/switch-role',
       { method: 'POST', body: JSON.stringify(role ? { role } : {}) },
     ),
 
   // Courses
-  getCourses: (page = 1, limit = 10, search = '') =>
-    request<PaginatedResponse<Course>>(
-      `/courses?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
-    ),
+  getCourses: (page = 1, limit = 10, search = '', status = '') => {
+    let url = `/courses?page=${page}&limit=${limit}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    return request<PaginatedResponse<Course>>(url);
+  },
+
+  getMyCourses: (page = 1, limit = 10) =>
+    request<PaginatedResponse<Course>>(`/courses/my-courses?page=${page}&limit=${limit}`),
 
   getCourse: (id: number) =>
     request<Course>(`/courses/${id}`),
@@ -106,10 +111,26 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  approveCourse: (id: number) =>
+    request<Course>(`/courses/${id}/approve`, {
+      method: 'PATCH',
+    }),
+
+  rejectCourse: (id: number) =>
+    request<Course>(`/courses/${id}/reject`, {
+      method: 'PATCH',
+    }),
+
   deleteCourse: (id: number) =>
     request<void>(`/courses/${id}`, { method: 'DELETE' }),
 
-  // Students
+  // Students & Enrollment
+  enrollInCourse: (courseId: number, name?: string) =>
+    request<Student>(`/courses/${courseId}/enroll`, {
+      method: 'POST',
+      body: JSON.stringify(name ? { name } : {}),
+    }),
+
   getStudents: (page = 1, limit = 10, search = '') =>
     request<PaginatedResponse<Student>>(
       `/students?page=${page}&limit=${limit}${search ? `&search=${encodeURIComponent(search)}` : ''}`,

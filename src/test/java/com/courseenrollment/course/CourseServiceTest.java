@@ -1,11 +1,13 @@
 package com.courseenrollment.course;
 
+import com.courseenrollment.auth.enums.UserRole;
 import com.courseenrollment.common.dto.PaginatedResponse;
 import com.courseenrollment.common.exception.ConflictException;
 import com.courseenrollment.common.exception.ResourceNotFoundException;
 import com.courseenrollment.course.dto.CreateCourseRequest;
 import com.courseenrollment.course.dto.UpdateCourseRequest;
 import com.courseenrollment.course.entity.Course;
+import com.courseenrollment.course.enums.CourseStatus;
 import com.courseenrollment.course.repository.CourseRepository;
 import com.courseenrollment.course.service.CourseService;
 import com.courseenrollment.student.entity.Student;
@@ -21,7 +23,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,10 +50,11 @@ class CourseServiceTest {
     void setUp() {
         mockCourse = new Course("React 101", "Jane Smith", 5);
         mockCourse.setId(1L);
+        mockCourse.setStatus(CourseStatus.APPROVED);
     }
 
     @Test
-    @DisplayName("create should save and return course")
+    @DisplayName("create by admin should save and return course with APPROVED status")
     void create_success() {
         CreateCourseRequest req = new CreateCourseRequest("React 101", "Jane Smith", 5);
         when(courseRepository.save(any(Course.class))).thenReturn(mockCourse);
@@ -62,14 +64,58 @@ class CourseServiceTest {
         assertThat(created).isNotNull();
         assertThat(created.getName()).isEqualTo("React 101");
         assertThat(created.getSeatLimit()).isEqualTo(5);
+        assertThat(created.getStatus()).isEqualTo(CourseStatus.APPROVED);
         verify(courseRepository).save(any(Course.class));
     }
 
     @Test
-    @DisplayName("findAll should return paginated courses")
+    @DisplayName("create by instructor should save course with PENDING status")
+    void create_instructor_creates_pending_course() {
+        CreateCourseRequest req = new CreateCourseRequest("NodeJS 101", null, 20);
+        Course pendingCourse = new Course("NodeJS 101", "instructor@test.com", 20, CourseStatus.PENDING, "instructor@test.com");
+        when(courseRepository.save(any(Course.class))).thenReturn(pendingCourse);
+
+        Course created = courseService.create(req, "instructor@test.com", UserRole.INSTRUCTOR);
+
+        assertThat(created).isNotNull();
+        assertThat(created.getStatus()).isEqualTo(CourseStatus.PENDING);
+        assertThat(created.getInstructorEmail()).isEqualTo("instructor@test.com");
+        verify(courseRepository).save(any(Course.class));
+    }
+
+    @Test
+    @DisplayName("approve should set status to APPROVED")
+    void approve_course_success() {
+        Course pendingCourse = new Course("NodeJS 101", "instructor@test.com", 20, CourseStatus.PENDING, "instructor@test.com");
+        pendingCourse.setId(2L);
+        when(courseRepository.findById(2L)).thenReturn(Optional.of(pendingCourse));
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Course approved = courseService.approve(2L);
+
+        assertThat(approved.getStatus()).isEqualTo(CourseStatus.APPROVED);
+        verify(courseRepository).save(pendingCourse);
+    }
+
+    @Test
+    @DisplayName("reject should set status to REJECTED")
+    void reject_course_success() {
+        Course pendingCourse = new Course("NodeJS 101", "instructor@test.com", 20, CourseStatus.PENDING, "instructor@test.com");
+        pendingCourse.setId(2L);
+        when(courseRepository.findById(2L)).thenReturn(Optional.of(pendingCourse));
+        when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Course rejected = courseService.reject(2L);
+
+        assertThat(rejected.getStatus()).isEqualTo(CourseStatus.REJECTED);
+        verify(courseRepository).save(pendingCourse);
+    }
+
+    @Test
+    @DisplayName("findAll should return approved paginated courses for public/student")
     void findAll_success() {
         Page<Course> page = new PageImpl<>(List.of(mockCourse));
-        when(courseRepository.findAll(any(Pageable.class))).thenReturn(page);
+        when(courseRepository.findByStatus(eq(CourseStatus.APPROVED), any(Pageable.class))).thenReturn(page);
 
         PaginatedResponse<Course> result = courseService.findAll(1, 10, null);
 
@@ -80,15 +126,53 @@ class CourseServiceTest {
     }
 
     @Test
-    @DisplayName("findAll with search term should query searchCourses")
+    @DisplayName("findAll with search term should query searchCoursesByStatus for approved courses")
     void findAll_withSearch() {
         Page<Course> page = new PageImpl<>(List.of(mockCourse));
-        when(courseRepository.searchCourses(eq("React"), any(Pageable.class))).thenReturn(page);
+        when(courseRepository.searchCoursesByStatus(eq("React"), eq(CourseStatus.APPROVED), any(Pageable.class))).thenReturn(page);
 
         PaginatedResponse<Course> result = courseService.findAll(1, 10, "React");
 
         assertThat(result.getData()).hasSize(1);
-        verify(courseRepository).searchCourses(eq("React"), any(Pageable.class));
+        verify(courseRepository).searchCoursesByStatus(eq("React"), eq(CourseStatus.APPROVED), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("findAll by admin with status pending should query pending courses")
+    void findAll_admin_pending() {
+        Course pending = new Course("Draft", "Inst", 10, CourseStatus.PENDING, "inst@test.com");
+        Page<Course> page = new PageImpl<>(List.of(pending));
+        when(courseRepository.findByStatus(eq(CourseStatus.PENDING), any(Pageable.class))).thenReturn(page);
+
+        PaginatedResponse<Course> result = courseService.findAll(1, 10, null, "pending", "admin@test.com", "ROLE_ADMIN");
+
+        assertThat(result.getData()).hasSize(1);
+        verify(courseRepository).findByStatus(eq(CourseStatus.PENDING), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("getMyCourses for student returns enrolled courses")
+    void getMyCourses_student() {
+        Page<Course> page = new PageImpl<>(List.of(mockCourse));
+        when(studentRepository.findEnrolledCoursesByEmail(eq("student@test.com"), any(Pageable.class))).thenReturn(page);
+
+        PaginatedResponse<Course> result = courseService.getMyCourses("student@test.com", "ROLE_STUDENT", 1, 10);
+
+        assertThat(result.getData()).hasSize(1);
+        verify(studentRepository).findEnrolledCoursesByEmail(eq("student@test.com"), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("getMyCourses for instructor returns courses taught by instructor")
+    void getMyCourses_instructor() {
+        Course instCourse = new Course("My Course", "Prof", 10, CourseStatus.PENDING, "prof@test.com");
+        Page<Course> page = new PageImpl<>(List.of(instCourse));
+        when(courseRepository.findByInstructorEmail(eq("prof@test.com"), any(Pageable.class))).thenReturn(page);
+
+        PaginatedResponse<Course> result = courseService.getMyCourses("prof@test.com", "ROLE_INSTRUCTOR", 1, 10);
+
+        assertThat(result.getData()).hasSize(1);
+        verify(courseRepository).findByInstructorEmail(eq("prof@test.com"), any(Pageable.class));
     }
 
     @Test

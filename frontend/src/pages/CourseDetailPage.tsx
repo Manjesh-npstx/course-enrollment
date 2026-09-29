@@ -14,7 +14,7 @@ import { useAuth } from '../context/AuthContext';
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const courseId = Number(id);
-  const { isAdmin } = useAuth();
+  const { user, isAdmin, isInstructor, isStudent } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [courseLoading, setCourseLoading] = useState(true);
@@ -84,6 +84,38 @@ export function CourseDetailPage() {
     }
   };
 
+  const handleSelfEnroll = async () => {
+    try {
+      await api.enrollInCourse(courseId, user?.name);
+      setToast({ message: 'Successfully enrolled in course!', type: 'success' });
+      fetchStudents();
+      fetchCourse();
+    } catch (err: any) {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message;
+      setToast({ message: msg || 'Failed to enroll', type: 'error' });
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await api.approveCourse(courseId);
+      setToast({ message: 'Course approved successfully!', type: 'success' });
+      fetchCourse();
+    } catch (err: any) {
+      setToast({ message: err.message || 'Failed to approve course', type: 'error' });
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await api.rejectCourse(courseId);
+      setToast({ message: 'Course rejected', type: 'success' });
+      fetchCourse();
+    } catch (err: any) {
+      setToast({ message: err.message || 'Failed to reject course', type: 'error' });
+    }
+  };
+
   const handleDeleteStudent = async () => {
     if (!deleteStudent) return;
     setDeleting(true);
@@ -118,6 +150,9 @@ export function CourseDetailPage() {
   const enrolled = course?.students?.length ?? 0;
   const available = (course?.seatLimit ?? 0) - enrolled;
   const isFull = available <= 0;
+  const isPending = (course?.status || '').toLowerCase() === 'pending';
+  const isApproved = (course?.status || '').toLowerCase() === 'approved';
+  const isCurrentUserEnrolled = isStudent && students.some((s) => s.email === user?.email);
 
   if (courseLoading) {
     return (
@@ -152,9 +187,52 @@ export function CourseDetailPage() {
       </Link>
 
       <div className="course-detail-header card">
-        <h1 className="page-title">{course.name}</h1>
-        <p className="course-meta">Instructor: <strong>{course.instructor}</strong></p>
-        <div className="course-seats">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 className="page-title" style={{ margin: 0 }}>{course.name}</h1>
+              {isApproved && <span className="badge badge-success">Approved</span>}
+              {isPending && <span className="badge badge-warning">Pending Approval</span>}
+              {(course.status || '').toLowerCase() === 'rejected' && <span className="badge badge-danger">Rejected</span>}
+              {isInstructor && course.instructorEmail === user?.email && (
+                <span className="badge badge-info">Your Course</span>
+              )}
+            </div>
+            <p className="course-meta" style={{ marginTop: '8px' }}>
+              Instructor: <strong>{course.instructor}</strong>
+              {course.instructorEmail && <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>({course.instructorEmail})</span>}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isAdmin && isPending && (
+              <>
+                <button className="btn btn-primary btn-sm" onClick={handleApprove}>
+                  ✓ Approve Course
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={handleReject}>
+                  ✕ Reject Course
+                </button>
+              </>
+            )}
+
+            {isStudent && (
+              isCurrentUserEnrolled ? (
+                <span className="badge badge-success" style={{ padding: '6px 12px', fontSize: '0.875rem' }}>
+                  ✓ You are enrolled
+                </span>
+              ) : isApproved && !isFull ? (
+                <button className="btn btn-primary" onClick={handleSelfEnroll}>
+                  ⚡ Enroll in this Course
+                </button>
+              ) : isFull ? (
+                <span className="badge badge-secondary" style={{ padding: '6px 12px' }}>Course Full</span>
+              ) : null
+            )}
+          </div>
+        </div>
+
+        <div className="course-seats" style={{ marginTop: '16px' }}>
           {isFull ? (
             <span className="badge badge-danger">Full — {enrolled}/{course.seatLimit} seats</span>
           ) : (

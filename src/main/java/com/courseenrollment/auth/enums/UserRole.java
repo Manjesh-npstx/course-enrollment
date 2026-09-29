@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum UserRole {
     ADMIN("admin"),
+    INSTRUCTOR("instructor"),
     STUDENT("student");
 
     private final String value;
